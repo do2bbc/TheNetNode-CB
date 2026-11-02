@@ -20,6 +20,7 @@ the complete build with:
 make -B tnn CC="gcc -Werror" HOSTCC="gcc -Werror"
 sh tests/gcc-regressions.sh
 sh tests/runtime-regressions.sh
+sh tests/startup-banner.sh
 sh tests/monitor-hostmode.sh
 ```
 
@@ -45,6 +46,11 @@ The runtime regression suite additionally checks:
 
 These tests run offline with injected I/O outcomes and a local socket pair.
 They do not connect to other packet-radio nodes.
+
+The startup banner writes the author/website string separately from the
+formatted port/link counts so it does not overflow `hprintf`'s 256-byte
+buffer. Its regression test uses stack protection and sanitizers, with and
+without Convers enabled.
 
 TheNetNode from Nordlink>&lt;, CB-Version (TNN 1.79cb55)
 
