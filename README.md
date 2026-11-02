@@ -1,23 +1,117 @@
-# TheNetNode-CB
+# TheNetNode-CB 1.79cb55
 
-## 1.79cb55
+Packet-Radio-Node fuer Linux, CB-Version von DAA531, weitergefuehrt von DO2BBC.
+Quellcode: https://github.com/do2bbc/TheNetNode-CB
 
-Continued by DO2BBC: https://github.com/do2bbc/TheNetNode-CB
+## 1. Kompilieren
 
-This release includes the modern GCC build corrections, TCP/Convers runtime
-fixes and regression tests described below. Original CB author: DAA531.
+Unter Debian, Ubuntu, Linux Mint oder Raspberry Pi OS:
 
-## Linux build with modern GCC
-
-Build with `make tnn` (verified with GCC 12 on Debian 12). Global variables
-declared in headers use `extern` and are defined once in their owning source
-file, so the default `-fno-common` works without a `-fcommon` workaround.
-Debug information is retained for crash analysis. The Linux build's 72 GCC 12
-warnings have been corrected in the source, without disabling warnings. Verify
-the complete build with:
-
+```bash
+sudo apt update
+sudo apt install git build-essential linux-libc-dev
+git clone https://github.com/do2bbc/TheNetNode-CB.git
+cd TheNetNode-CB
+make tnn
 ```
-make -B tnn CC="gcc -Werror" HOSTCC="gcc -Werror"
+
+Das fertige Programm liegt unter `bin/tnn`. Auf dem Rechner kompilieren, auf
+dem TNN laufen soll: Eine Raspberry-Pi-Binaerdatei funktioniert nicht auf
+einem x86_64-PC. Der Build wurde mit GCC 12 unter Debian 12 getestet.
+Keine eigenen Optimierungsflags wie `-O2` hinzufuegen.
+
+## 2. Neuinstallation
+
+**Nur fuer eine neue Installation!** `make baseinstall` kopiert
+Beispielkonfigurationen und ueberschreibt dabei vorhandene Einstellungen.
+Wenn `/usr/local/tnn` bereits existiert, stattdessen Abschnitt 3 verwenden.
+
+Im Quellverzeichnis:
+
+```bash
+sudo make baseinstall
+sudo nano /usr/local/tnn/tnn.ini
+sudo nano /usr/local/tnn/tnn179.pas
+sudo nano /usr/local/tnn/tnn179.tnb
+sudo nano /usr/local/tnn/ax25ip.cfg
+```
+
+Vor dem ersten Start anpassen:
+
+| Datei | Einstellungen |
+|---|---|
+| `tnn.ini` | Geraete, Schnittstellentypen und Zuordnung der TNN-Ports |
+| `tnn179.pas` | Eigenes Node-Rufzeichen, Alias, Sysop- und Konsolenpasswort |
+| `tnn179.tnb` | Portparameter und Node-Kommandos beim Start |
+| `ax25ip.cfg` | AXIP-Verbindungen, sofern verwendet |
+
+Die Vorlage erwartet serielle Hardware an `/dev/ttyS0`. Ohne diese Hardware
+muss der Geraeteblock ersetzt werden. Beispiele fuer weitere Schnittstellen
+stehen in [tnnini.all](os/linux/ini/tnnini.all).
+Die Reihenfolge der Zeilen in `tnn179.pas` beibehalten und die
+Beispielpasswoerter unbedingt ersetzen. Netzwerkports und Firewall passend
+zum eigenen Betrieb konfigurieren; keine unveraenderte Testkonfiguration
+ins Internet stellen.
+
+Zum ersten Start in der Konsole:
+
+```bash
+cd /usr/local/tnn
+sudo ./tnn
+```
+
+Mit dem selbst gesetzten Konsolenpasswort anmelden, dann `Esc`, `c` und
+`Enter` fuer die erste Node-Konsole eingeben. Fehler beim Einlesen der
+Startkommandos stehen in `/usr/local/tnn/startup.log`.
+
+Die Installation richtet keinen systemd-Dienst automatisch ein. Fuer einen
+ersten Test reicht der Konsolenstart; ein vorhandener Dienst kann weiterhin
+verwendet werden.
+
+## 3. Bestehende Installation aktualisieren
+
+Im Quellverzeichnis den neuen Stand holen und bauen:
+
+```bash
+git pull --ff-only
+make -B tnn
+```
+
+**TNN vor dem Kopieren sauber beenden**, damit die Einstellungen gespeichert
+werden. Bei einem vorhandenen Dienst namens `tnn.service`:
+
+```bash
+sudo systemctl stop tnn.service
+```
+
+Ohne Dienst TNN auf dem bisher verwendeten Weg beenden. Danach die gestoppte
+Installation sichern und **nur die Binaerdatei** ersetzen:
+
+```bash
+sudo tar -czf "/var/backups/tnn-$(date +%Y%m%d-%H%M%S).tar.gz" -C /usr/local tnn
+sudo install -m 0755 bin/tnn /usr/local/tnn/tnn
+```
+
+Falls das Backup fehlschlaegt, nicht mit dem Ersetzen fortfahren.
+Anschliessend wie bisher starten, bei dem genannten Dienst:
+
+```bash
+sudo systemctl start tnn.service
+sudo systemctl status tnn.service --no-pager
+```
+
+Ohne Dienst wieder aus `/usr/local/tnn` starten. Mit dem Node-Kommando
+`VERSION` den Stand pruefen. Bei einem anderen Installationspfad die Pfade
+entsprechend anpassen.
+
+**Beim Update weder `make baseinstall` noch eine Neuinstallation ausfuehren.**
+Das obige Vorgehen erhaelt Rufzeichen, Passwoerter, Links und Portkonfiguration.
+
+## Optionale Tests und weitere Dokumentation
+
+Diese Regressionstests laufen offline und verbinden sich nicht mit anderen Nodes:
+
+```bash
 sh tests/gcc-regressions.sh
 sh tests/runtime-regressions.sh
 sh tests/startup-banner.sh
@@ -25,47 +119,5 @@ sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
 ```
 
-The regression tests use AddressSanitizer and UndefinedBehaviorSanitizer for
-buffer handling, profile passwords, percentage and duration formatting,
-language loading, Convers sender filters and the IP forwarding flag.
-The profile password parser now copies the complete accepted password (up to
-80 bytes) instead of copying only the first 16 bytes without reliable
-termination. Existing stored profile passwords are not rewritten.
-These corrections do not establish that the reported Convers crash is fixed.
-
-The runtime regression suite additionally checks:
-
-- Send errors release each queued frame exactly once and do not interrupt
-  processing of other connections.
-- Backpressure retains unread frame data; partial writes and temporary socket
-  errors retry without losing or duplicating bytes.
-- Linux socket readiness checks use an initialized, nonblocking timeout;
-  permanent socket errors are logged and mark the connection for disconnect.
-- Failed outgoing TCP Convers links restore the previous user/circuit context.
-- In password mode, missing or invalid `/NAME` channel arguments produce an
-  explicit response instead of dereferencing a null pointer.
-
-These tests run offline with injected I/O outcomes and a local socket pair.
-They do not connect to other packet-radio nodes.
-
-The startup banner writes the author/website string separately from the
-formatted port/link counts so it does not overflow `hprintf`'s 256-byte
-buffer. Its regression test uses stack protection and sanitizers, with and
-without Convers enabled.
-
-For distribution toolchains enabling format diagnostics, also verify with
-`make -B tnn CC="gcc -Wformat -Wformat-security -Wmaybe-uninitialized -Werror" HOSTCC="gcc -Wformat -Wformat-security -Wmaybe-uninitialized -Werror"`.
-Plain language messages are emitted as text rather than format strings.
-The internal socket-set reset initializes both its count and descriptor array;
-`tests/socket-set.sh` covers reset, duplicate entries and capacity limits.
-
-TheNetNode from Nordlink>&lt;, CB-Version (TNN 1.79cb55)
-
-Version Info:
-
-TheNetNode (Linux) (CB), Version 1.79cb55 (build date generated automatically)
-     Copyright by NORD><LINK, free for non-commercial usage.
-         See www.nordlink.org for further information.
-  This version compiled for 16 Ports, 400 L2-Links and 200 Circuits.
-       *** CB-Version by DAA531, continued by DO2BBC ***
-       https://github.com/do2bbc/TheNetNode-CB
+Weitere Unterlagen: [doc](doc/), [Versionshistorie](history/) und
+[Lizenzbedingungen](alas.txt).
