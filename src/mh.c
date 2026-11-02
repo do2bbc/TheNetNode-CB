@@ -494,20 +494,20 @@ ccp_mh(MHTAB *mh)
   if (show_mode == _TNN)
   {
 #ifdef SPEECH
-    fprintf(fp, speech_message(281));
+    fputs(speech_message(281), fp);
 #else
     fprintf(fp, "Date     Time  Port");
 #endif
 
     if (!show_counter)
 #ifdef SPEECH
-      fprintf(fp,speech_message(282));
+      fputs(speech_message(282), fp);
 #else
       fprintf(fp,"                Rx         Tx    Call\n");
 #endif
     else
 #ifdef SPEECH
-      fprintf(fp,speech_message(283));
+      fputs(speech_message(283), fp);
 #else
       fprintf(fp,"       RX         TX    Call       RX-Rej  TX-Rej    DAMA\n");
 #endif

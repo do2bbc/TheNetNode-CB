@@ -21,6 +21,7 @@ make -B tnn CC="gcc -Werror" HOSTCC="gcc -Werror"
 sh tests/gcc-regressions.sh
 sh tests/runtime-regressions.sh
 sh tests/startup-banner.sh
+sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
 ```
 
@@ -51,6 +52,12 @@ The startup banner writes the author/website string separately from the
 formatted port/link counts so it does not overflow `hprintf`'s 256-byte
 buffer. Its regression test uses stack protection and sanitizers, with and
 without Convers enabled.
+
+For distribution toolchains enabling format diagnostics, also verify with
+`make -B tnn CC="gcc -Wformat -Wformat-security -Wmaybe-uninitialized -Werror" HOSTCC="gcc -Wformat -Wformat-security -Wmaybe-uninitialized -Werror"`.
+Plain language messages are emitted as text rather than format strings.
+The internal socket-set reset initializes both its count and descriptor array;
+`tests/socket-set.sh` covers reset, duplicate entries and capacity limits.
 
 TheNetNode from Nordlink>&lt;, CB-Version (TNN 1.79cb55)
 

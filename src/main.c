@@ -472,7 +472,7 @@ static void mainf(void)
 void quit_program(int exit_code)
 {
 #ifdef SPEECH
-  printf(speech_message(280));
+  fputs(speech_message(280), stdout);
 #else
   printf("Programm wird beendet!\n");
 #endif

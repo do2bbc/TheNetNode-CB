@@ -524,7 +524,7 @@ static void form_referer(void)
   {
     if ((strlen(hostpos+strlen(h_host))>79))
 #ifdef SPEECH
-      printf(speech_message(339));
+      fputs(speech_message(339), stdout);
 #else
       printf("form_referer str too long");
 #endif
@@ -1098,7 +1098,7 @@ static int PrepareHeader(MBHEAD *tbp)
     h += sprintf(h,"Sie haben sich erfolgreich abgemeldet.\n");
     h += sprintf(h,"Rejected request: <tt>'%s'</tt></span>\n",h_inbuf);
     h += sprintf(h,"</pre><hr><span style=\"color:black; font-size:12\">"
-                   "<ADDRESS>HTTPD-Server TheNetNode V1.79 - Server at ´%s Port %d </ADDRESS></span>", call, Htons(ifp[HTP_ID].tcpport));
+                   "<ADDRESS>HTTPD-Server TheNetNode V1.79 - Server at ï¿½%s Port %d </ADDRESS></span>", call, Htons(ifp[HTP_ID].tcpport));
     h += sprintf(h,"</body></html>\n");
 
     /* Aktuellen Header in Buffer schreiben. */
@@ -1118,7 +1118,7 @@ static int PrepareHeader(MBHEAD *tbp)
     h += sprintf(h,"An error ocurred while processing your query.\n");
     h += sprintf(h,"Rejected request: <tt>'%s'</tt></span>\n",h_inbuf);
     h += sprintf(h,"</pre><hr><span style=\"color:black; font-size:12\">"
-                   "<ADDRESS>HTTPD-Server TheNetNode V1.79 - Server at ´%s Port %d </ADDRESS></span>", call, Htons(ifp[HTP_ID].tcpport));
+                   "<ADDRESS>HTTPD-Server TheNetNode V1.79 - Server at ï¿½%s Port %d </ADDRESS></span>", call, Htons(ifp[HTP_ID].tcpport));
     h += sprintf(h,"</body></html>\n");
 
     /* Aktuellen Header in Buffer schreiben. */

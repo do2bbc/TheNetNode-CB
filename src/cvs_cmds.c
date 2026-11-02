@@ -651,7 +651,7 @@ static void channel_command(CONNECTION *cp)
   if (ch) {
     if ((first = count_user(cp->channel)) == 1) {
 #ifdef SPEECH
-      sprintf(buffer, speech_message(48));
+      snprintf(buffer, sizeof(buffer), "%s", speech_message(48));
 #else
       sprintf(buffer, "You're alone.\r");
 #endif
@@ -2169,7 +2169,7 @@ static void name_command(CONNECTION *cp)
     appenddirect(cp, buffer);
     if (!cnt) {
 #ifdef SPEECH
-      sprintf(buffer, speech_message(48));
+      snprintf(buffer, sizeof(buffer), "%s", speech_message(48));
 #else
       sprintf(buffer, "You're alone.\r");
 #endif
@@ -3185,7 +3185,7 @@ else
     } else
         {
 #ifdef SPEECH
-        sprintf(buffer, speech_message(172));
+        snprintf(buffer, sizeof(buffer), "%s", speech_message(172));
 #else
         sprintf(buffer,"No such User!\r");
 #endif
@@ -3223,7 +3223,7 @@ static void width_command(CONNECTION *cp)
 #endif
   else if (neww < 32 || neww > 255)
 #ifdef SPEECH
-    sprintf(buffer, speech_message(108));
+    snprintf(buffer, sizeof(buffer), "%s", speech_message(108));
 #else
     sprintf(buffer, "*** Range 32 to 255\r");
 #endif
@@ -4142,7 +4142,7 @@ static void hostname_command(CONNECTION *cp)
       if (strlen(arg) > 9)
       {
 #ifdef SPEECH
-        sprintf(buffer, speech_message(3));
+        snprintf(buffer, sizeof(buffer), "%s", speech_message(3));
 #else
         sprintf(buffer,"*** is too long. the Convers hostname (max.9 indications)!\r");
 #endif

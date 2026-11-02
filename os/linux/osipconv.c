@@ -85,7 +85,7 @@ int IPConvConnectOS(char *call, char *upcall, BOOLEAN flag)
                   , ip_tbl[i].hostname);
 
 #ifdef SPEECH
-    printf(speech_message(335));
+    fputs(speech_message(335), stdout);
 #else
     printf("Error: Socket cannot be constructed!\r");
 #endif

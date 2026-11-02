@@ -142,7 +142,7 @@ BOOLEAN axipx_l1init(int l2port)
   if (fcntl(l1pp->kisslink, F_SETFL, FNDELAY) < 0)
   {
 #ifdef SPEECH
-  printf(speech_message(333));
+  fputs(speech_message(333), stdout);
 #else
       printf("Error: can't set non-blocking I/O on IPX socket");
 #endif

@@ -59,7 +59,7 @@ typedef struct _fd_set
     } \
 } while(0)
 
-#define FD_ZERO_T(set) (((Fd_set *)(set))->fd_count=0)
+#define FD_ZERO_T(set) memset((set), 0, sizeof(Fd_set))
 
 extern BOOLEAN  GetSocket(Socklen_t, Fd_set *);
 #define FD_ISSET_T(fd, set) GetSocket((Socklen_t)(fd), (Fd_set *)(set))
