@@ -117,12 +117,12 @@ make help
 sudo install -d -m 0700 /usr/local/tnn/userexe /usr/local/tnn/sysexe
 sudo install -m 0700 bin/help /usr/local/tnn/userexe/help
 sudo ln -sfn ../userexe/help /usr/local/tnn/sysexe/syshelp
-sudo cp -n contrib/onlhelp/ohu.txt contrib/onlhelp/ohs.txt /usr/local/tnn/
+sudo cp --update=none contrib/onlhelp/ohu.txt contrib/onlhelp/ohs.txt /usr/local/tnn/
 ```
 
 Danach im Node `HELP` beziehungsweise als Sysop `SYSHELP` aufrufen.
 Ein Neustart ist nicht erforderlich. Vorhandene Hilfetexte werden durch
-`cp -n` nicht ueberschrieben; die Node-Konfiguration bleibt unveraendert.
+`cp --update=none` nicht ueberschrieben; die Node-Konfiguration bleibt unveraendert.
 Bei abweichenden Installations- oder Programmpfaden die Befehle entsprechend
 anpassen.
 
