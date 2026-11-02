@@ -1,5 +1,12 @@
 # TheNetNode-CB
 
+## 1.79cb55
+
+Continued by DO2BBC: https://github.com/do2bbc/TheNetNode-CB
+
+This release includes the modern GCC build corrections, TCP/Convers runtime
+fixes and regression tests described below. Original CB author: DAA531.
+
 ## Linux build with modern GCC
 
 Build with `make tnn` (verified with GCC 12 on Debian 12). Global variables
@@ -39,12 +46,13 @@ The runtime regression suite additionally checks:
 These tests run offline with injected I/O outcomes and a local socket pair.
 They do not connect to other packet-radio nodes.
 
-TheNetNode from Nordlink>&lt;, CB-Version (TNN 1.79cb53)
+TheNetNode from Nordlink>&lt;, CB-Version (TNN 1.79cb55)
 
 Version Info:
 
-TheNetNode (Linux) (CB), Version 1.79cb53 (May  8 2019)
+TheNetNode (Linux) (CB), Version 1.79cb55 (build date generated automatically)
      Copyright by NORD><LINK, free for non-commercial usage.
          See www.nordlink.org for further information.
   This version compiled for 16 Ports, 400 L2-Links and 200 Circuits.
-       *** CB-Version by DAA531, http://dig531.dyndns.org. ***
+       *** CB-Version by DAA531, continued by DO2BBC ***
+       https://github.com/do2bbc/TheNetNode-CB

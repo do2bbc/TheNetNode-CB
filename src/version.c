@@ -61,7 +61,7 @@
 /*#define DEBUG */
 
 #define __AUTHOR__   "cb"       /* Monogramm des Autors/Programmierers  */
-#define __PATCH__    "54"       /* Patch-Level des Autors               */
+#define __PATCH__    "55"       /* Patch-Level des Autors               */
 
 /* Zuerst legen wir die variierenden Texte mal fest                     */
 #ifdef __LINUX__
@@ -116,6 +116,7 @@ char loginstr[] = "TNN V" __VER__ __SYSTEM__ "\r";
 
 char infostr[] = "TNN179";
 
-char author[] = "*** CB-Version by DAA531, http://dig531.dyndns.org. ***\r";
+char author[] = "*** CB-Version by DAA531, continued by DO2BBC ***\r"
+                "https://github.com/do2bbc/TheNetNode-CB\r";
 
 /* End of src/version.c */
