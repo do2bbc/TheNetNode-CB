@@ -275,9 +275,6 @@ char *ReadBuf(char *cBuf, BOOLEAN flag)
   register int i;
   skipsp(&clicnt, &clipoi);
 
-  /* Frischer Buffer */
-  memset(cBuf, 0, sizeof(cBuf));
-
   for (i = 0; i < MAXPATH; ++i)
   {
     if ((!clicnt) || (*clipoi == ' '))
@@ -643,9 +640,10 @@ void ccpattach(void)
 
             l1att = &l1port[l1ptab[port]];
 
-            for (attype = attyp; attype->attstr != NULL; ++attype)
+            for (attype = attyp; attype->attstr != NULL; ++attype) {
               if (l1att->kisstype == attype->attnum)
                 break;
+            }
 
               putprintf(mbp, "%2d    %-10s "
                          , port
@@ -1027,7 +1025,7 @@ void dump_attach(MBHEAD *mbp)
 
       case KISS_AXIP:
         putstr("KTYP=AX25IP ", mbp);
-        if (l1pp->device)
+        if (l1pp->device[0] != '\0')
           putprintf(mbp, "DEVICE=%d"
                        , ntohs(my_udp));
         else

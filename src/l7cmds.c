@@ -1862,7 +1862,7 @@ void ccpbuf(void)
     }
     else
       used[(UBYTE) ((USRBLK *)actbp)->owner]++;
-      actbp++;
+    actbp++;
   }
 #ifdef SPEECH
   putprintf(mbp, speech_message(215), used[ALLOC_NO_OWNER], nmbfre);

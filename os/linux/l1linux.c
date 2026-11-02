@@ -65,9 +65,11 @@ static void loopback(void);
 #endif
 
 static  UWORD   tic1m = 0;
-#ifndef ATTACH
-static  BOOLEAN tokenflag;
-#endif /* ATTACH */
+#ifdef ATTACH
+BOOLEAN tokenflag;
+#else
+static BOOLEAN tokenflag;
+#endif
 static  ULONG   recovery_count;
 static  LONG    lost_token = 0;
 static  LONG    token_pro_sec = 0L;     /* Anzahl Token/Sekunde         */

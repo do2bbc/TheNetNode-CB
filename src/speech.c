@@ -7,7 +7,7 @@ struct speech_msg
 {
   char speech[20];
   char num1[255];
-  char mode_num[8];
+  char mode_num[9];
   char default_num[8];
   char default_mode_num[9];
   unsigned      mode;
@@ -497,7 +497,6 @@ static char *lese_meldung(char *buffer,FILE *fp)
   strcpy(buf,buffer);
 
   if(buffer[0]=='"')
-      while(buf)
           {
            while( (buf[i] == 0x1b || buf[i] >= 0x20) &&
                 (buf[i]!='"' || (i && buf[i-1]=='\\')) &&
@@ -531,7 +530,7 @@ int speech_load(char *bufspeech)
   FILE *fp;
   char  speechcfg[255];
   char buffer[255];
-  char mode_num[8] = "0000000";
+  char mode_num[9] = "00000000";
 
   strcpy(speechcfg,speechpath);
   strcat(speechcfg,bufspeech);
@@ -541,7 +540,7 @@ int speech_load(char *bufspeech)
       return(TRUE);
 
   {
-      while(!feof(fp))
+      while (fgets(buffer, sizeof(buffer), fp) != NULL)
           {
           if (meldungen > MAXZEILEN)
               {
@@ -551,7 +550,6 @@ int speech_load(char *bufspeech)
               return(FALSE);
              }
 
-          fgets(buffer,255,fp);
           lese_meldung(buffer,fp);
           if (strlen(buffer) >= 254)
           {
@@ -564,7 +562,7 @@ int speech_load(char *bufspeech)
           speech_tbl[meldungen].mode = set_substitute_symbols(speech_tbl[meldungen].num1,mode_num);
           strcpy(speech_tbl[meldungen].mode_num        ,mode_num);
 
-          if ((strncmp(speech_tbl[meldungen].default_mode_num,speech_tbl[meldungen].mode_num,7) == FALSE)
+          if ((strcmp(speech_tbl[meldungen].default_mode_num,speech_tbl[meldungen].mode_num) == FALSE)
                   && (speech_tbl[meldungen].mode == speech_tbl[meldungen].default_mode))
                   {
                   meldungen++;

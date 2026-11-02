@@ -1502,7 +1502,7 @@ static void ptcuser(MBHEAD *mbp, WORD what, const char *pstr)
       case UPLINK :               /* kommt vom CCP (Convers)          */
                   if (ptcp->ublk) {         /* ist der im CCP?                  */
           if (   (!cvsflg && ptcp->ublk->convflag == TRUE)
-              || (cvsflg && !ptcp->ublk->convflag == TRUE))
+              || (cvsflg && !ptcp->ublk->convflag))
                 continue;
           if (ptcp->ublk->convers != NULLCONNECTION) {
             putcvsu(ptcp->ublk, mbp);    /* Convers-Verb.             */
@@ -1583,13 +1583,14 @@ static void ptcuser(MBHEAD *mbp, WORD what, const char *pstr)
     if (ptcp->p_uid != NO_UID) {  /* gibts einen Partner-Link?        */
       putspa(38, mbp);
       putstr(ptcp->ublk ? "<..> " : "<--> ", mbp);
-      if (ptcp->ublk)
+      if (ptcp->ublk) {
         if (ptcp->ublk->status == US_CQ)
          {
           putuse(CQ_LINK, uid, mbp);
           continue;
          }
-        putuse(DOWNLINK, ptcp->p_uid, mbp);
+      }
+      putuse(DOWNLINK, ptcp->p_uid, mbp);
     }
     viaput(UPLINK, uid, mbp);
     if (ptcp->p_uid != NO_UID)
@@ -1839,23 +1840,26 @@ percent (ULONG zaehler, ULONG nenner, int comma, int space, MBHEAD *mbp)
    }
 
    if (zaehler / nenner != 0)
-     sprintf(resultstr, "%s%lu", resultstr, zaehler / nenner);
+     sprintf(resultstr, "%lu", zaehler / nenner);
    else
      zaehlernull = 1;
    zaehler = (zaehler % nenner) * 10;
 
    if (zaehlernull != 1 || zaehler / nenner != 0)
-     sprintf(resultstr, "%s%lu", resultstr, zaehler / nenner);
+     snprintf(resultstr + strlen(resultstr), sizeof(resultstr) - strlen(resultstr),
+              "%lu", zaehler / nenner);
    zaehler = (zaehler % nenner) * 10;
 
-   sprintf(resultstr, "%s%lu", resultstr, zaehler / nenner);
+   snprintf(resultstr + strlen(resultstr), sizeof(resultstr) - strlen(resultstr),
+            "%lu", zaehler / nenner);
    zaehler = (zaehler % nenner) * 10;
    if (comma > 0)
      strcat(resultstr, ".");
 
    for (i = 0 ; i < comma; i++)
    {
-     sprintf(resultstr, "%s%lu", resultstr, zaehler / nenner);
+     snprintf(resultstr + strlen(resultstr), sizeof(resultstr) - strlen(resultstr),
+              "%lu", zaehler / nenner);
      zaehler = (zaehler % nenner) * 10;
    }
 /* String mit space Angabe formatieren                                  */

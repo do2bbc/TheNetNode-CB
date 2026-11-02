@@ -4,8 +4,8 @@
 
 static T_INTERFACE *ifpp;              /* Zeiger auf das aktuelle Interface   */
 
-struct sockaddr_in myaddr_in;
-struct sockaddr_in peeraddr_in;
+extern struct sockaddr_in myaddr_in;
+extern struct sockaddr_in peeraddr_in;
 
 
 /* Schliesse aktuellen Socket. */
@@ -97,8 +97,8 @@ void L1ExitOS(UWORD Interface)
     /* dann zum naechsten Interface. */
     return;
 
-    /* Alle TCPIP-Verbindungen auf den Interface schliessen. */
-    CloseSockOS(TRUE, ifpoi->Interface);
+  /* Alle TCPIP-Verbindungen auf den Interface schliessen. */
+  CloseSockOS(TRUE, ifpoi->Interface);
 
   /* Interface ist nicht aktiv, */
   if (ifpoi->actively == FALSE)
@@ -229,7 +229,7 @@ int ReadSockOS(void)                     /* Empfangene TCPIP Packete.         */
       ret = select(tcppoi->sock + 1, &fdsI, NULL , NULL ,&timevalue);
 
       if (ret <= 0)
-        return((int)NULL);               /* Keine aktivitaet auf den Socket.  */
+        return(0);                      /* Keine aktivitaet auf den Socket.  */
       else
         /* Zeichen vom Socket empfangen. */
         tcppoi->RecvLen = recv (tcppoi->sock, tcppoi->rxbuf, RXLEN,0);
@@ -246,7 +246,7 @@ int ReadSockOS(void)                     /* Empfangene TCPIP Packete.         */
 
 
         tcppoi->disflg |= 0x80;          /* Segment auf DISC stellen.         */
-        return((int)NULL);
+        return(0);
       }
 
       if (  (ret)
@@ -258,7 +258,7 @@ int ReadSockOS(void)                     /* Empfangene TCPIP Packete.         */
                   , tcppoi->ip);
 
         tcppoi->disflg |= 0x80;          /* Segment auf DISC stellen.         */
-        return((int)NULL);
+        return(0);
       }
     }
 
@@ -624,18 +624,34 @@ int PutflushSockOS(void)
     while (1)                                       /* Gibt es was zu senden. */
     {
       fd_set wfdsI;
-      struct timeval Tv;
+      struct timeval Tv = {0, 0};
 
       FD_ZERO(&wfdsI);                                 /* Loesche inhalt. */
       FD_SET((unsigned)tcppoi->sock, &wfdsI);           /* Socket setzen. */
 
-      if (select(tcppoi->sock + 1, NULL, &wfdsI , NULL ,&Tv))/* Sender frei.*/
+      ret = select(tcppoi->sock + 1, NULL, &wfdsI, NULL, &Tv);
+      if (ret < 0 && errno != EINTR)
+      {
+        ifpp = SetInterface(tcppoi->Interface);
+        T_LOGL1(TRUE, "(PutflushSockOS):%s\nselect fehlgeschlagen: %s\n"
+                      , tcppoi->ip, strerror(errno));
+        tcppoi->disflg |= 0x80;
+        return(TRUE);
+      }
+      if (ret > 0)                                      /* Sender frei. */
       {
         if (tcppoi->txstatus == TCP_TX_BUSY)        /* Sender ist auf Busy. */
           tcppoi->txstatus = TCP_TX_FREE;       /* Sender auf frei stellen. */
 
                                                             /* Frame senden */
-        if ((ok = send(tcppoi->sock, tcppoi->txbuf + tcppoi->sum, tcppoi->txc - tcppoi->sum,0)) < 0)
+        ok = send(tcppoi->sock, tcppoi->txbuf + tcppoi->sum,
+                  tcppoi->txc - tcppoi->sum, 0);
+        if (ok < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+        {
+          tcppoi->txstatus = TCP_TX_BUSY;
+          return(FALSE);
+        }
+        if (ok <= 0)
         {
           ifpp = SetInterface(tcppoi->Interface);
           T_LOGL1(TRUE, "(PutflushSockTCP):%s\nFrame senden fehlgeschlagen!\n"
@@ -657,11 +673,8 @@ int PutflushSockOS(void)
 
       }
 
-      if (ret == FALSE)                           /* Sender ist nicht frei. */
-      {
-        tcppoi->txstatus = TCP_TX_BUSY;         /* Sender auf Busy stellen. */
-        return(FALSE);
-      }
+      tcppoi->txstatus = TCP_TX_BUSY;
+      return(FALSE);
     }
 
     tcppoi->sum = 0;                                        /* Zuruecksetzen. */

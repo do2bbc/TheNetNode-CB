@@ -59,6 +59,8 @@
 #ifdef AX25IP
 #include "ax25ip.h"
 
+unsigned short my_udp;
+
 /*************************************************************************/
 /* AX25IP-Hausaufgaben : RX, TX und Routingtabellenpflege                */
 /*************************************************************************/
@@ -1859,7 +1861,7 @@ void ax25ip_send(void)
     {
       /* Versuchen, jetzt eine IP-Adresse zu bestimmen */
       if ((hstent = gethostbyname((char*)rt->hostname)) != NULL)
-         memcpy((unsigned char*)&rt->hostname, (unsigned char *)&hstent->h_addr_list[0][0], 4);
+         memcpy((unsigned char*)&rt->ip_addr, (unsigned char *)&hstent->h_addr_list[0][0], 4);
     }
 
     /* Checksumme anhaengen */
@@ -2618,13 +2620,11 @@ void write_log(const char *format, ...)
 {
   FILE *fp;
   va_list arg_ptr;
-  struct tm *lt;
 
   fp = fopen("ax25ip.log", "a+");
 
   if (fp != NULL)
   {
-    lt = localtime(&sys_time);
     fprintf(fp, "%16.16s:", ctime(&sys_time));
     va_start(arg_ptr, format);
     vfprintf(fp, format, arg_ptr);
@@ -3032,7 +3032,7 @@ static int activ_links(void)
 static char *puttim_stat(void)
 {
   struct      tm *p;
-  static char tim[20];
+  static char tim[80];
   time_t      timet;
   char       *atime = tim;
 

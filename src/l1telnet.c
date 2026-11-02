@@ -24,7 +24,7 @@ void ccptelnet(void)
 
     switch (ch)
     {
-      case 'P':                             /* Sysop will Telnet-Port aéndern */
+      case 'P':                             /* Sysop will Telnet-Port aï¿½ndern */
         if (!skipsp(&clicnt, &clipoi))
         {
           putmsg("Invalid Parameter\r");
@@ -147,7 +147,7 @@ TRILLIAN GetContensTEL(char contens)
   if (contens == LF)         /* Zeichen ein LF-Return. LF-Return nicht setzen.*/
     return(NO);                                     /* zum naechsten Zeichen. */
 
-  if (contens == (int)NULL)                      /* Alle Zeichen verarbeitet. */
+  if (contens == NUL)                            /* Alle Zeichen verarbeitet. */
   {
     if (tcppoi->cr)                                      /* Return war dabei. */
     {

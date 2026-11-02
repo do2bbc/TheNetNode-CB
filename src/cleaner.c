@@ -84,7 +84,10 @@ clean(char *fn)
   char  out[2048];
   char *co;
   int   changed = 0;
-  int   n, c, lc;
+  int   n, c;
+#ifndef __LINUX__
+  int   lc = 0;
+#endif
   FILE *fpi;
   FILE *fpo;
 
@@ -103,7 +106,7 @@ clean(char *fn)
   setvbuf(fpi, NULL, _IOFBF, 8192L);
   setvbuf(fpo, NULL, _IOFBF, 8192L);
 
-  for (lc = 0, co = out; (c = fgetc(fpi)) != EOF; )
+  for (co = out; (c = fgetc(fpi)) != EOF; )
   {
 #ifndef __LINUX__
     if (c == '\n' && lc != '\r')
@@ -158,7 +161,9 @@ clean(char *fn)
                   break;
     }
 
+#ifndef __LINUX__
     lc = c;
+#endif
     if (c != '\r' && c != '\n')
       *co++ = c;
 

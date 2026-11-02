@@ -767,7 +767,7 @@ static char *lese_rx_bytes(char *rx_bytes,int rxbytes)
     }
     else
       sprintf(rx_bytes,"%iB ",rxbytes);
-      return(rx_bytes);
+  return(rx_bytes);
 }
 
 static char *lese_tx_bytes(char *tx_bytes,int txbytes)
@@ -785,7 +785,7 @@ static char *lese_tx_bytes(char *tx_bytes,int txbytes)
     }
     else
       sprintf(tx_bytes,"%iB ",txbytes);
-      return(tx_bytes);
+  return(tx_bytes);
 }
 
 static void mh_delete(MHTAB *mh, char *bufcal, int option)

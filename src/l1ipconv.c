@@ -2,6 +2,8 @@
 
 #ifdef L1IPCONV
 
+struct iptbl ip_tbl[MAX_ROUTEN];
+
 /* Zeiger auf das Aktuelle Interface. */
 static T_INTERFACE *ifpp;
 
@@ -436,7 +438,7 @@ TRILLIAN GetContensCVS(char contens)
       return(NO);
 
     /* Alle Zeichen durch. */
-    if (contens == (int)NULL)
+    if (contens == NUL)
     {
       /* War ein Return dabei? */
       if (tcppoi->cr)

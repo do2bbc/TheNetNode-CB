@@ -474,7 +474,7 @@ int ReadSockTCP(void)                    /* Empfangene TCPIP Packete.         */
         /* Zeichen vom Socket empfangen. */
         tcppoi->RecvLen = Recv (tcppoi->sock, tcppoi->rxbuf, RXLEN,0);
       else
-        return((int)NULL);               /* Keine aktivitaet auf den Socket.  */
+        return(0);                      /* Keine aktivitaet auf den Socket.  */
     }
 
     if (tcppoi->RecvLen < 1)             /* Fehler beim Empfang.              */
@@ -487,7 +487,7 @@ int ReadSockTCP(void)                    /* Empfangene TCPIP Packete.         */
                   , tcppoi->ip);
 
         tcppoi->disflg |= 0x80;          /* Segment auf DISC stellen.         */
-        return((int)NULL);
+        return(0);
       }
 
       if (  (ret)
@@ -499,7 +499,7 @@ int ReadSockTCP(void)                    /* Empfangene TCPIP Packete.         */
                   , tcppoi->ip);
 
         tcppoi->disflg |= 0x80;          /* Segment auf DISC stellen.         */
-        return((int)NULL);
+        return(0);
       }
     }
 
@@ -1342,7 +1342,7 @@ static int CheckSSID(char *scall)
   lastfunc = "l1tcpip(CheckSSID)";
 #endif /* DEBUG_MODUS */
 
-  while (SearchCall(scall, TRUE) == TRUE)/* Suche Rufzeichen mit SSID-Bereich */
+  while (SearchCall(scall, TRUE) == YES) /* Suche Rufzeichen mit SSID-Bereich */
   {
     ssid++;      /* Es gibt SCHON ein Rufzeichen mit der SSID, um 1 erhoehen. */
 
@@ -1530,7 +1530,7 @@ void RelinkTCP(MBHEAD *tbp)
   lastfunc = "l1tcpip(RelinkTCP)";
 #endif /* DEBUG_MODUS */
 
-  if (tbp->mbpc)                                   /* Es gíbt daten.          */
+  if (tbp->mbpc)                                   /* Es gï¿½bt daten.          */
   {
     rwndmb(tbp);                                   /* Buffer zurueckspulen.   */
                                                    /* Packet umhaengen.       */
@@ -1626,7 +1626,7 @@ TCPIP *FdReadSockTCP(int Sock, UWORD Interface, UWORD Mode)
 }
 
 /* Sender bis max. TXLEN fuellen. */
-static BOOLEAN PutvSockTCP(int c)
+static TRILLIAN PutvSockTCP(MBHEAD *data)
 {
 #ifdef DEBUG_MODUS
   lastfunc = "l1tcpip(PutvSockTCP)";
@@ -1637,11 +1637,14 @@ static BOOLEAN PutvSockTCP(int c)
     tcppoi->txbuf[tcppoi->txc] = 0;
 
     if (PutflushSockTCP())                                /* Frame senden. */
-      return(TRUE);
+      return(ERRORS);
+
+    if (tcppoi->txc >= TXLEN)
+      return(NO);
   }
 
-  tcppoi->txbuf[tcppoi->txc++] = c;                       /* Fuelle txbuffer. */
-  return(FALSE);
+  tcppoi->txbuf[tcppoi->txc++] = getchr(data);
+  return(YES);
 }
 
 /* Eingehende Frames bearbeiten. */
@@ -1713,8 +1716,7 @@ void TcpipTX(void)
 {
   SENDTX *STx;
   SENDTX *STxPrev;
-  char    buf;
-  int     len = 0;
+  TRILLIAN result;
 #ifdef DEBUG_MODUS
   lastfunc = "l1tcpip(TcpipTX)";
 #endif /* DEBUG_MODUS */
@@ -1750,27 +1752,28 @@ void TcpipTX(void)
       MhUpdateTCP(STx->Data, FALSE);                      /* MH-Liste updaten */
 
                                               /* solange Daten vorhanden sind */
+    result = YES;
     while (STx->Data->mbgc != STx->Data->mbpc)
     {
-      if (PutvSockTCP(buf = getchr(STx->Data)))  /* Zeichen in sendebuffer. */
-      {
-        if (STx->Data != NULL)                         /* Wenn es daten gibt, */
-          dealmb(STx->Data);                                    /* entsorgen. */
-
-        dealoc((MBHEAD *)ulink((LEHEAD *)STx));      /* TX-Segment entsorgen. */
-        continue;                                   /* zum naechsten eintrag. */
-      }
+      result = PutvSockTCP(STx->Data);
+      if (result != YES)
+        break;
     }
 
-    tcppoi->txbuf[tcppoi->txc] = 0;
-    PutflushSockTCP();                                       /* Frame senden. */
+    if (result == NO)
+      continue;                    /* Ungelesene Daten bis zum Retry behalten. */
+
+    if (result == YES)
+    {
+      tcppoi->txbuf[tcppoi->txc] = 0;
+      PutflushSockTCP();                                     /* Frame senden. */
+    }
 
     if (STx->Data != NULL)                             /* Wenn es daten gibt, */
       dealmb(STx->Data);                                        /* entsorgen. */
 
     dealoc((MBHEAD *)ulink((LEHEAD *)STx));          /* TX-Segment entsorgen. */
 
-    len = 0;                                                /* Zuruecksetzen. */
   }
 }
 
@@ -2128,7 +2131,6 @@ void WriteLogTCP(BOOLEAN flag, const char *format, ...)
 {
   FILE        *fp = NUL;
   va_list      arg_ptr;
-  struct tm   *lt;
 #ifdef DEBUG_MODUS
   lastfunc = "l1tcpip(WriteLogTCP)";
 #endif /* DEBUG_MODUS */
@@ -2158,7 +2160,7 @@ void WriteLogTCP(BOOLEAN flag, const char *format, ...)
         if (!ifpp->log)                      /* Loglevel ist nicht eingeschaltet. */
           return;                            /* Keine Logmeldungen schreiben.     */
 
-          fp = fopen(HTTPDLOG, "a+");                           /* Datei oeffnen. */
+        fp = fopen(HTTPDLOG, "a+");                             /* Datei oeffnen. */
         break;
       }
 #endif /* L1HTTPD */
@@ -2194,8 +2196,6 @@ void WriteLogTCP(BOOLEAN flag, const char *format, ...)
     printf("(WriteLogTCP):\nLOG-Datei kann nicht geoeffnet werden!\n");
     return;                                 /* Abbruch.                       */
   }
-
-  lt = localtime(&sys_time);
 
   if (flag)                                          /* Datum/Zeit schreiben. */
     fprintf(fp, "%16.16s ", ctime(&sys_time));

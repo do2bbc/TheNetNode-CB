@@ -38,7 +38,7 @@ void call3str(char *id1, const char *id2)
          j = 0;
 
   /* Frischen Buffer besorgen. */
-  memset(id1, 0, sizeof(id1));
+  memset(id1, 0, L2IDLEN + 1);
 
   /* Rufzeichen ohne SSID einlesen. */
   for (i = 0; i < L2IDLEN - 1; i++, j++)
@@ -415,7 +415,7 @@ GetName(WORD *laenge, char **inbuf, int Len, char *outbuf)
 
   /* Frischer Buffer. */
   memset(Buffer, 0, sizeof(Buffer));
-  memset(outbuf, 0, sizeof(outbuf));
+  outbuf[0] = 0;
 
   i = 0;
   while (n > 0)

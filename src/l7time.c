@@ -475,7 +475,7 @@ void bake(void)
    {
      if (beapoi->telemetrie == 3)
      {
-       char          runtime[8 + 1];
+       char          runtime[3 * sizeof(unsigned long) + 8];
 #ifndef CONNECTTIME_
        unsigned long zeit,
                      sec,

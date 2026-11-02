@@ -31,9 +31,7 @@ GetPasswd(WORD *laenge, char **inbuf, int Len, char *outbuf)
 
   Buffer[i] = 0;
 
-  memset(outbuf, 0, sizeof(outbuf));
-
-  strncpy(outbuf, Buffer, NAMESIZE);
+  memcpy(outbuf, Buffer, i + 1);
   *laenge = n;
   *inbuf  = p;
 
@@ -60,14 +58,11 @@ void PasswdKodierung(const char *in, char *out)
   j = strlen(in);
 
   if (  (j < 5)
-      ||(j > 81))
+      ||(j > 80))
   {
     out[0] = 0;
     return;
   }
-
-  /* Frischer Buffer. */
-  memset(out, 0, sizeof(out));
 
   for (i = 0; i < j; i++)
   {
@@ -99,14 +94,11 @@ void PasswdDekodierung(const char *in, char *out)
   j = strlen(in);
 
   if (  (j < 5)
-      ||(j > 81))
+      ||(j > 80))
   {
     out[0] = 0;
     return;
   }
-
-  /* Frischer Buffer. */
-  memset(out, 0, sizeof(out));
 
   for (i = 0; i < j; i++)
   {

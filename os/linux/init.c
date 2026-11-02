@@ -482,7 +482,7 @@ read_init_file(int argc, char *argv[])
   char            line[82];
   char            str1[82];
   char            str2[82];
-  char            tmp_str[80];
+  char            tmp_str[2 * MAXPATH];
   int             rslt;
   char           *str_ptr;
   int             scanned;
@@ -601,14 +601,24 @@ read_init_file(int argc, char *argv[])
     str_ptr = getenv("HOME");
     if (str_ptr != NULL)
     {
-      sprintf(tmp_str, "%s/%s", str_ptr, tnn_initfile);
+      if (snprintf(tmp_str, sizeof(tmp_str), "%s/%s", str_ptr, tnn_initfile)
+          >= (int)sizeof(tmp_str))
+      {
+        printf("ERROR: HOME/init-file path too long\n");
+        return(TRUE);
+      }
       if ((init_file_fp = fopen(tmp_str, "r")) != NULL)
         warning = FALSE;
     }
 #ifdef INIPATH
     if (!init_file_fp)
     {
-      sprintf(tmp_str, "%s/%s", INIPATH, tnn_initfile);
+      if (snprintf(tmp_str, sizeof(tmp_str), "%s/%s", INIPATH, tnn_initfile)
+          >= (int)sizeof(tmp_str))
+      {
+        printf("ERROR: INIPATH/init-file path too long\n");
+        return(TRUE);
+      }
       if ((init_file_fp = fopen(tmp_str, "r")) != NULL)
         warning = FALSE;
     }

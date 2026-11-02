@@ -536,7 +536,7 @@ flex_route_query(char *buf)
   char    dstid[L2IDLEN];           /* Zielrufzeichen                   */
   char    dstcal[15];               /* ASCII: Rufzeichen des Zielnode   */
   char    nbrcal[15];               /* ASCII: Rufzeichen des Nachbarn   */
-  char    linkzeit[10];
+  char    linkzeit[3 * sizeof(unsigned long) + 4];
   char   *insert;                   /* Das soll eingefuegt werden.      */
   PEER   *pp;
   MBHEAD *fbp;

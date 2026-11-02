@@ -97,6 +97,7 @@ BOOLEAN unlock;
 char    tnn_socket[MAXPATH];
 char    start_name[MAXPATH];
 char    stop_name[MAXPATH];
+char    cShell[512];
 
 UWORD   maxrounds = 1;          /* 1 = 100 Runden (default, wenn kein   */
                                 /* "rounds"-Eintrag in tnn.ini          */
@@ -241,7 +242,7 @@ setfiletime(struct ffblk *ffblk)
 {
   struct stat  filestat;
   struct tm   *filetime;
-  char         fn[MAXPATH];
+  char         fn[sizeof(ffblk->ff_path) + sizeof(ffblk->ff_name)];
 
   sprintf(fn, "%s%s", ffblk->ff_path, ffblk->ff_name);
   stat(fn, &filestat);
@@ -1281,7 +1282,7 @@ tnnexec(char *file_name)
   if (access(file_name, X_OK) == 0)     /* nur ausfuehrbares Programm   */
    {
     exit_all();                         /* Resourcen freigeben          */
-    execl(file_name, NULL, NULL);       /* Programm starten             */
+    execl(file_name, file_name, (char *)NULL); /* Programm starten       */
 /* Hierher darf man eigentlich nicht kommen! Daher verlassen wir das    */
 /* Programm in der Hoffnung, dass es danach regulaer von einem Batch    */
 /* erneut gestartet wird.                                               */
@@ -1934,8 +1935,8 @@ exit_all(void)
     if (userpo->status != US_EXTP)      /* externer Prozess aktiv?      */
       continue;
 
-      kill(-(userpo->child_pid), SIGKILL);      /* Abbruch              */
-      waitpid(userpo->child_pid, NULL, 0);      /* Prozess-Status holen */
+    kill(-(userpo->child_pid), SIGKILL);        /* Abbruch              */
+    waitpid(userpo->child_pid, NULL, 0);        /* Prozess-Status holen */
   }
 
   /* Buffer freigeben */

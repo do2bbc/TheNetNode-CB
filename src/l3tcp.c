@@ -709,13 +709,11 @@ htontcp(register int   i,                                /* Aktueller Socket. */
   register MBHEAD    *bp;
   PSEUDO_HEADER       pseudo_hdr;
   unsigned short      checksum;
-  WORD                DataMbpc;                            /* Sicherung mbpc  */
-  WORD                DataMbgc;                            /* Sicherung mbgc. */
   int                 SaveLen;
 
   bp = (MBHEAD *)allocb(ALLOC_MBHEAD);                    /* Buffer besorgen. */
 
-  put16((unsigned short)sockets[i].LocalPort, bp);       /* Dest-Port´setzen. */
+  put16((unsigned short)sockets[i].LocalPort, bp);       /* Dest-Portï¿½setzen. */
   put16((unsigned short)sockets[i].DestPort, bp);      /* Source-Port setzen. */
 
   put32((unsigned long)sockets[i].SendUnacked, bp);     /* Ack-Nummer setzen. */
@@ -741,9 +739,6 @@ htontcp(register int   i,                                /* Aktueller Socket. */
 
         SaveLen = i = Data->mbpc - Data->mbgc;           /* Laenge ermitteln. */
 
-        DataMbpc = Data->mbpc;                              /* Werte sichern. */
-        DataMbgc = Data->mbgc;
-
         while (i--)                              /* Alle zeichen einlesen und */
           putchr(getchr(Data), bp);                   /* in Buffer schreiben. */
 
@@ -764,7 +759,7 @@ htontcp(register int   i,                                /* Aktueller Socket. */
 
   bp = (MBHEAD *)allocb(ALLOC_MBHEAD);              /* Neuen buffer besorgen. */
 
-  put16((unsigned short)sockets[i].LocalPort, bp);       /* Dest-Port´setzen. */
+  put16((unsigned short)sockets[i].LocalPort, bp);       /* Dest-Portï¿½setzen. */
   put16((unsigned short)sockets[i].DestPort, bp);      /* Source-Port setzen. */
 
   put32((unsigned long)sockets[i].SendUnacked, bp);     /* Ack-Nummer setzen. */

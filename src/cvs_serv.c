@@ -217,6 +217,8 @@ BOOLEAN connect_cvshost(PERMLINK *p)
          connections = cp->next;                     /* tun wir so, als haetten*/
          free(cp);                                   /* wir nichts bemerkt     */
          p->connection = NULLCONNECTION;
+         userpo = save_userpo;
+         cirpoi = save_cirpoi;
          return(FALSE);
       }
 
@@ -592,7 +594,7 @@ void ccpcvs()
     for (i = 0; i < MAXCVSHOST; i++) {     /* besucht uns ein Host? */
       p = permarray[i];
 #ifdef CONVERS_LINKS
-      if (p == NUL)
+      if (p == NULL)
           break;
       if ((!strcmp(p->cname, name)) || (cmpcal(p->call, strupr(call))))
 #else

@@ -75,8 +75,6 @@
 /* Den Nickname und/oder nur das Call ausgeben */
 void makeName(CONNECTION* pCon, char* pBuffer)
 {
-    memset(pBuffer, 0, sizeof(pBuffer));
-
     if (pCon->nickname[0] != '\0')
       sprintf(pBuffer, "%s:%s", pCon->name, pCon->nickname);
     else
@@ -113,9 +111,24 @@ void process_input(CONNECTION *cp)
     if (!strncmp(cnvinbuf, "/NAME", 5))/* Beim 1.Login Kanal ermitteln/setzen */
     {
       char *Channel;
+      char *end;
+      long channel;
 
       Channel = strrchr(cnvinbuf, ' ');                   /* Kanal ermitteln. */
-      cp->channel = atoi(Channel);                           /* Kanal setzen. */
+      if (Channel == NULL || !isdigit((unsigned char)Channel[1]))
+      {
+        appenddirect(cp, "*** Usage: /NAME <name> <channel>\r");
+        return;
+      }
+      channel = strtol(Channel + 1, &end, 10);
+      while (isspace((unsigned char)*end))
+        end++;
+      if (*end != NUL || channel > MAXCHANNEL)
+      {
+        appenddirect(cp, "*** Invalid channel.\r");
+        return;
+      }
+      cp->channel = channel;
       return;
     }
 
@@ -1256,7 +1269,7 @@ static BOOLEAN scan_linksarg(char *arg, char *hostname, WORD *act,
       int TcpPort = 0;
 
       /* IP-Adresse pruefen. */
-      if (IPConvGetIP(&bcnt, &bp, ip) == YES)       /* Call ok ? */
+      if (IPConvGetIP(&bcnt, &bp, ip) == TRUE)      /* Call ok ? */
       {
         struct hostent *he;
 
@@ -1407,7 +1420,7 @@ void links_command(CONNECTION *cp)
           p = permarray[pl];
 #ifdef CONVERS_LINKS
           /* es sind kein eintrage vorhanden. */
-          if (p == NUL)
+          if (p == NULL)
               /* zum Schleifenkopf. */
               continue;
           /* kopie vom AX25 Rufzeichen. */
@@ -3787,13 +3800,13 @@ static void h_topi_command(CONNECTION *cp)
 #ifdef CONVNICK
 static void h_uadd_command(CONNECTION *cp)
 {
-  char *name, *host, *data, *nickname, *channel;
+  char *name, *host, *data, *nickname;
   CONNECTION *p;
 
   name = getarg(NULL, GET_NXTLC);
   host = getarg(NULL, GET_NXTLC);
   nickname = getarg(NULL, GET_NXTCS);
-  channel = getarg(NULL, GET_NXTLC);
+  getarg(NULL, GET_NXTLC);
   data = getarg(NULL, GET_ALL);
 
   if (*data == '~' && data[1] == '~')
@@ -3922,11 +3935,11 @@ static BOOLEAN host_ok(char *call)
   }
 
   c = call;
-  while (*c)                            /* mindestens ein Buchstabe */
+  while (*c) {                          /* mindestens ein Buchstabe */
     if (isalpha(*c++))
         return(TRUE);
-
-    return(FALSE);
+  }
+  return(FALSE);
 }
 
 /*---------------------------------------------------------------------------*/

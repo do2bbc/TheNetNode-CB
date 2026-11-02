@@ -1,4 +1,44 @@
 # TheNetNode-CB
+
+## Linux build with modern GCC
+
+Build with `make tnn` (verified with GCC 12 on Debian 12). Global variables
+declared in headers use `extern` and are defined once in their owning source
+file, so the default `-fno-common` works without a `-fcommon` workaround.
+Debug information is retained for crash analysis. The Linux build's 72 GCC 12
+warnings have been corrected in the source, without disabling warnings. Verify
+the complete build with:
+
+```
+make -B tnn CC="gcc -Werror" HOSTCC="gcc -Werror"
+sh tests/gcc-regressions.sh
+sh tests/runtime-regressions.sh
+sh tests/monitor-hostmode.sh
+```
+
+The regression tests use AddressSanitizer and UndefinedBehaviorSanitizer for
+buffer handling, profile passwords, percentage and duration formatting,
+language loading, Convers sender filters and the IP forwarding flag.
+The profile password parser now copies the complete accepted password (up to
+80 bytes) instead of copying only the first 16 bytes without reliable
+termination. Existing stored profile passwords are not rewritten.
+These corrections do not establish that the reported Convers crash is fixed.
+
+The runtime regression suite additionally checks:
+
+- Send errors release each queued frame exactly once and do not interrupt
+  processing of other connections.
+- Backpressure retains unread frame data; partial writes and temporary socket
+  errors retry without losing or duplicating bytes.
+- Linux socket readiness checks use an initialized, nonblocking timeout;
+  permanent socket errors are logged and mark the connection for disconnect.
+- Failed outgoing TCP Convers links restore the previous user/circuit context.
+- In password mode, missing or invalid `/NAME` channel arguments produce an
+  explicit response instead of dereferencing a null pointer.
+
+These tests run offline with injected I/O outcomes and a local socket pair.
+They do not connect to other packet-radio nodes.
+
 TheNetNode from Nordlink>&lt;, CB-Version (TNN 1.79cb53)
 
 Version Info:

@@ -1465,11 +1465,11 @@ void send_msg_to_channel(char *fromname, WORD channel, char *text)
 
   cvd = strcmp(fromname, "conversd");
   if (!cvd && !strncmp(text, "*** ", 4)) {          /* /me abfangen */
-    sscanf(text + 4, "%s", buffer);           /* Absender ermitteln */
-    buffer[64] = '\0';
+    buffer[0] = '\0';
+    sscanf(text + 4, "%64s", buffer);         /* Absender ermitteln */
     if ((c = strchr(buffer, '@')) != NULL)
       *c = '\0';
-    sprintf(namefilt, " %s ", buffer);
+    sprintf(namefilt, " %.64s ", buffer);
 #ifdef CONVNICK
     memset(Nickname, 0, sizeof(Nickname));          /* String Initialisieren. */
 
@@ -1480,7 +1480,7 @@ void send_msg_to_channel(char *fromname, WORD channel, char *text)
     }
 #endif /* CONVNICK */
   } else {
-     sprintf(namefilt, " %s ", fromname);
+     sprintf(namefilt, " %.64s ", fromname);
     if ((c = strchr(namefilt, ':')) != NULL) {
       *c++ = ' ';
       *c = NUL;
@@ -1700,7 +1700,7 @@ void update_destinations(PERMLINK *p, char *name, time_t rtt, char *rev)
       d->link = p;
       Strcpy(d->name, name);
       Strcpy(d->rev, rev);
-      if (!destinations || (! destinations->name) || (Strcmp(destinations->name, name) > 0)) {
+      if (!destinations || (Strcmp(destinations->name, name) > 0)) {
         d->next = destinations;
         destinations = d;
       } else {
@@ -1726,7 +1726,7 @@ void update_destinations(PERMLINK *p, char *name, time_t rtt, char *rev)
 
   if (!d)
     return;
-  /* changed :15/06/24 by MD2SAW. Prevents empty or to short Dest-names */ 
+  /* changed :15/06/24 by MD2SAW. Prevents empty or to short Dest-names */
   if (strlen(name) < 4)
     return;
   d->rtt = rtt;
@@ -1775,7 +1775,7 @@ PERMLINK *update_permlinks(char *name, CONNECTION *cp, WORD isperm)
 
   for (pl = 0; pl < MAXCVSHOST; pl++) {
     p = permarray[pl];
-    if (p == NUL)
+    if (p == NULL)
         continue;
 #ifdef CONVERS_LINKS
     if ((cmpcal(p->call,NAME)) || (!strcasecmp(p->cname, name)))

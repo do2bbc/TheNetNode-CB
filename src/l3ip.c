@@ -241,7 +241,7 @@ ip_route(MBHEAD *mbhd)          /* Internet server                      */
   {
 #endif
     if (   (mbhd->l2fflg != L2CIP)
-        || (!IPpar[mbhd->l2port].ipMode & IP_FORWARDING))
+        || !(IPpar[mbhd->l2port].ipMode & IP_FORWARDING))
       return;
 #ifdef KERNELIF
   }
@@ -1131,7 +1131,7 @@ icmp_input(register IP * ip, register MBHEAD *bp)
                   i;
   ULONG           ping_tic;
   USRBLK         *ping_user;
-  char            buf[50];
+  char            buf[80];
   UWORD           adr[4];
 
   length = ip->length - IPLEN - ip->optlen;

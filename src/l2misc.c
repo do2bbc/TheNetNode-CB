@@ -301,7 +301,6 @@ busy(int port)
 {
   if (fullduplex(port))
     return ((iscd(port) & (RXBFLAG | TXBFLAG)) != 0);
-  else
 #ifndef PORT_SYNRONATION
     return ((iscd(port) & (DCDFLAG | PTTFLAG | RXBFLAG | TXBFLAG)) != 0);
 #else

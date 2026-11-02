@@ -224,19 +224,23 @@ void monitor(MBHEAD *fbp)
       rwndmb(l2mbp);
       relink((LEHEAD *)l2mbp, (LEHEAD *)smonfl.tail);
       monlin++;
-      if ((imbp->mbpc != 0) && (consmon.Mpar & MONF))
+      if (ishmod)
        {
-        l2mbp->type = HMRMONIH;
-        if (ishmod)             /* im Hostmode direkt das Infofeld      */
-         {                      /* ausgeben, nicht die ^A gewandelte    */
-          dealmb(imbp);
-          imbp = (MBHEAD *)allocb(ALLOC_MBHEAD);
-          fbp->mbbp = mbbp;
-          fbp->mbgc = mbgc;
-          getchr(fbp);              /* ueberlesen                   */
+        /* Auch reine L3/4-Steuerpakete brauchen ihren rohen Header. */
+        dealmb(imbp);
+        imbp = (MBHEAD *)allocb(ALLOC_MBHEAD);
+        fbp->mbbp = mbbp;
+        fbp->mbgc = mbgc;
+        if (!(rxfctl & L2CNOIM) && (fbp->mbgc < fbp->mbpc))
+         {
+          getchr(fbp);              /* PID ueberlesen               */
           while ((fbp->mbgc < fbp->mbpc) && (imbp->mbpc < 256))
             putchr(getchr(fbp), imbp);
          }
+       }
+      if ((imbp->mbpc != 0) && (consmon.Mpar & MONF))
+       {
+        l2mbp->type = HMRMONIH;
         rwndmb(imbp);                           /* zurueckspulen        */
         imbp->type = HMRMONI;
         relink((LEHEAD *)imbp, (LEHEAD *)smonfl.tail);

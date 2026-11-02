@@ -796,8 +796,8 @@ void
 hostim(void)
 {
   WORD            i;
-  char            tnnb_d_name[15];
-  char            tnnb_w_name[15];
+  char            tnnb_d_name[48];
+  char            tnnb_w_name[48];
   WORD            fertig;
   struct ffblk    tnnb_f;
 
@@ -1167,7 +1167,8 @@ hstcon(char direction)
   hstusr->noacti = ininat;
 
 #ifdef HOSTMYCALL
-  cpyid(hstusr->call, hostuserid);
+  if (direction)
+    cpyid(hstusr->call, hostuserid);
 #endif /* HOSTMYCAL */
 
   resptc(g_uid(hstusr, HOST_USER));

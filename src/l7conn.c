@@ -760,12 +760,13 @@ conl2(DEST *dest)
 #endif /* L1TCPIP */
 
   /* User-Suspendierung pruefen */
-  if (dest->typ == 'U')
+  if (dest->typ == 'U') {
     if (is_down_suspended(dest->call, dest->port))
     {
        conerr(CE_SUSPEND, dest);
        return;
     }
+  }
 
     if (portenabled(dest->port))
     {
@@ -1226,8 +1227,9 @@ void SetMyNode(char *viaidl)
   if (*viaidl == NUL)                             /* Es gibt keine Digiliste. */
     return;                                               /* Keine Aenderung. */
 
-  for(viap = viaidl; *viap; viap += L2IDLEN);        /* Durchsuche Digiliste. */
-   viap-=L2IDLEN;                                    /* naechstes Rufzeichen .*/
+  for (viap = viaidl; *viap; viap += L2IDLEN)       /* Durchsuche Digiliste. */
+    ;
+  viap -= L2IDLEN;                                /* letztes Rufzeichen */
 
   cpyid(updigi, viap);                             /* Einstiegsknoten setzen. */
   updigi[L2IDLEN - 1] |= L2CH;                                /* Flag setzen. */

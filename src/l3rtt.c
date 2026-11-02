@@ -392,8 +392,8 @@ rx_l3rtt_frame(PEER *rxpp, MBHEAD *mbp, char huge *savmbbp, WORD savmbgc)
       if (cmpid(rxpp->l2link->call, orgnod) == TRUE)
         if (rxpp->typ == TNN)           /* kann der andere Info?        */
           rx_broadcast(rxpp, mbp);      /* dann auswerten               */
-        dealmb(mbp);                    /* Buffer entsorgen             */
-        return;
+      dealmb(mbp);                      /* Buffer entsorgen             */
+      return;
     }
 
     if (match(mbp, "L3RTT:"))           /* L3RTT Kennung ?              */

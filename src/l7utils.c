@@ -823,8 +823,10 @@ getide(WORD *laenge, char *(*inbuf), char *outbuf)
   if ((i == L2CALEN) && (n > 0) && (*p != ' '))
     return(ERRORS);
 
+#ifndef CALLCHECK
   if (valcal(ident) == YES)
     return(ERRORS);
+#endif
 
   memcpy(outbuf, ident, L2CALEN);
 
@@ -889,7 +891,9 @@ fvalca(char *call)
 TRILLIAN
 valcal(char *call)
 {
+#ifndef CALLCHECK
   char *numpos = 0;
+#endif
   char *actual;
   char zeichen;
   WORD zahl = 0;
@@ -904,7 +908,9 @@ valcal(char *call)
       if ((zeichen >= '0') && (zeichen <= '9'))
       {
         zahl += 1;
+#ifndef CALLCHECK
         numpos = actual;
+#endif
       }
       else
         return(ERRORS);
@@ -1172,7 +1178,7 @@ void prompt2str(MBHEAD *mbp, char *str)
 
                        if ((c = strchr(buf, '\n')) != NULL)
                          *c = CR;
-                         putprintf(mbp, buf);
+                       putstr(buf, mbp);
                      }
 
                      fclose(fp);
@@ -2727,7 +2733,7 @@ static UWORD Interlinks_zaehlen(void)
     if (pp->used)
     {
       /* Rufzeichen? */
-      if (pp->l2link->call)
+      if (pp->l2link != NULL)
       {
         /* Pruefe ob das Rufzeichen ein LOCAL ist. */
         if (pp->typ >= LOCAL)
@@ -2779,9 +2785,9 @@ static UWORD Interlinks_zaehlen(void)
 /*************************************************************************/
 char *ConnectTime(unsigned long contime)
 {
-  static char   runtime[8 + 1];
+  static char   runtime[3 * sizeof(unsigned long) + 8];
   char         *time = runtime;
-  register int  zeit;
+  unsigned long zeit;
   unsigned long sec,
                 min,
                 std;
@@ -2792,7 +2798,7 @@ char *ConnectTime(unsigned long contime)
   std = zeit % 24L; zeit /= 24L;
 
   if (zeit > 0)
-    sprintf(time, "%2dd,%2luh",zeit, std);                 /* Tage, Stunden. */
+    sprintf(time, "%2lud,%2luh",zeit, std);                /* Tage, Stunden. */
   else
     if (std > 0)
       sprintf(time, "%2luh,%2lum",std, min);             /* Stunden, Minuten. */
