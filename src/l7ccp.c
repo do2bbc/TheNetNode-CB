@@ -2439,16 +2439,12 @@ void ccpver(void)
   MBHEAD *mbp;                          /* message-buffer-pointer       */
 
   mbp = putals(version);                /* Versionskennung zeigen       */
-#ifdef SPEECH
-    putprintf(mbp,speech_message(184), L2PNUM, LINKNMBR, NUMCIR,author);
-#else
-    putprintf(mbp,"     Copyright by NORD><LINK, free for non-commercial"
+    putstr("     Copyright by NORD><LINK, free for non-commercial"
                 " usage.\r         See www.nordlink.org for further"
-                " information.\r  This version compiled for %d Ports, %d"
-                " L2-Links and %d Circuits.\r"
-                                "       %s\r", L2PNUM, LINKNMBR, NUMCIR,author);
-#endif
-
+                " information.\r", mbp);
+    putprintf(mbp, "  This version compiled for %d Ports, %d"
+                  " L2-Links and %d Circuits.\r", L2PNUM, LINKNMBR, NUMCIR);
+    putstr(author, mbp);
   if (clicnt != 0 && (*clipoi == '*' || *clipoi == '+')) {
     putstr("\rCompiled options:\r"
 #ifdef IPROUTE
