@@ -104,7 +104,8 @@ def main(package, arch):
                 sentinel.write_text("existing configuration must survive\n")
             for action, target in [
                 ("--install", package), ("--install", package),
-                ("--remove", "tnn-cb"), ("--purge", "tnn-cb"),
+                ("--remove", "tnn-cb"), ("--install", package),
+                ("--purge", "tnn-cb"),
             ]:
                 subprocess.run([
                     "dpkg", f"--root={install_root}", "--force-architecture",
@@ -112,6 +113,7 @@ def main(package, arch):
                 ], check=True, stdout=subprocess.DEVNULL)
                 for sentinel in sentinels:
                     assert sentinel.read_text() == "existing configuration must survive\n"
+                assert (install_root / "usr/bin/tnn-cb").exists() == (action == "--install")
             print(f"{arch}: isolated install/reinstall/remove/purge preserved existing configuration")
         print(f"{arch}: package checksums, offline startup, login and clean exit passed")
 

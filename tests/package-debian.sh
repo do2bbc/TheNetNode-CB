@@ -18,7 +18,7 @@ export SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)
 version=$(awk '$2 == "__VER__" || $2 == "__AUTHOR__" || $2 == "__PATCH__" {
   gsub(/"/, "", $3); printf "%s", $3
 }' src/version.c)
-debversion="${version}+git$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d).$revision-1"
+debversion="${version}+git$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M%S).$revision-1"
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 mkdir -p "$output" "$tmp/source" "$tmp/package"
