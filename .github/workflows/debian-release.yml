@@ -27,9 +27,23 @@ jobs:
           apt-get install -y --no-install-recommends build-essential git ca-certificates dpkg-dev python3 qemu-user gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf libc6-dev-arm64-cross libc6-dev-armhf-cross linux-libc-dev
       - uses: actions/checkout@v6
       - name: Build Debian 12 package
-        run: sh tests/package-debian.sh "${{ matrix.arch }}" /tmp/debian-package
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          sh tests/package-debian.sh "${{ matrix.arch }}" /tmp/debian-package
       - name: Verify packaged executable
         run: python3 tests/debian-package.py /tmp/debian-package/*.deb "${{ matrix.arch }}"
+      - name: Verify apt installation with real target dependencies
+        run: |
+          dpkg --add-architecture "${{ matrix.arch }}"
+          apt-get update
+          apt-get -y -o 'Dpkg::Options::=--path-include=/usr/share/doc/tnn-cb/*' install /tmp/debian-package/*.deb
+          test -x /usr/bin/tnn-cb
+          test -f /usr/share/doc/tnn-cb/SOURCE.tar.gz
+          test -f /usr/share/doc/tnn-cb/examples/tnn.ini
+          test ! -e /usr/local/tnn
+          dpkg --verify tnn-cb
+          apt-get remove -y tnn-cb
+          test ! -e /usr/bin/tnn-cb
       - name: Native regression suites
         if: matrix.arch == 'amd64'
         run: |
