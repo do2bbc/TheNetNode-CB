@@ -1,7 +1,6 @@
 
 #include "tnn.h"
 #ifdef OS_IPLINK
-struct iptbl ip_tbl[MAX_ROUTEN];
 
 /* Zeiger auf das Aktuelle Interface. */
 static T_INTERFACE *ifpp;
