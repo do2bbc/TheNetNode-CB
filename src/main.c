@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef __WIN32__
+  win32_diagnostics_init();
   SetConsoleCtrlHandler( (PHANDLER_ROUTINE) CtrlHandler, TRUE );
 #endif
   /* Hardwarespezifische Sachen (Uhr nachstellen, UTC ins Enviroment,   */
@@ -362,6 +363,9 @@ char *wowarich;
 /*----------------------------------------------------------------------*/
 static void main_loop(void)
 {
+#ifdef __WIN32__
+  win32_diagnostics_tick();
+#endif
   prof_start(PROF_SUM);
 
   PROFILE(PROF_L2,"l2",l2);
@@ -523,6 +527,9 @@ void quit_program(int exit_code)
 #endif /* L1TCPIP */
 
     /* und tschuess.... */
+#ifdef __WIN32__
+    win32_diagnostics_exit(exit_code);
+#endif
     exit(exit_code);
   }
 }

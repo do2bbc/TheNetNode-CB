@@ -52,6 +52,8 @@
 
 #include "tnn.h"
 
+char cShell[512];
+
 static  struct  timeval tv;
 static  struct  timezone tz;
 
@@ -831,7 +833,6 @@ init_hardware(int argc, char *argv[])
 
   VMSG("--- Installing signal-handlers ...\n");
 #ifdef DEBUG_MODUS
-  signal(SIGSEGV, sigsegv);
   signal(SIGTERM, sigterm);
   signal(SIGPIPE, SigPipe);
 #endif
@@ -839,7 +840,6 @@ init_hardware(int argc, char *argv[])
   signal(SIGHUP, SIG_IGN);
   signal(SIGTSTP, SIG_IGN);
   signal(SIGTTIN, SIG_IGN);
-  signal(SIGTTOU, SIG_IGN);
 
   gettimeofday(&tv, &tz);
   tv_old = tv;

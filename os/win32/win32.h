@@ -49,6 +49,7 @@
 /************************************************************************/
 
 #include <winsock2.h>
+#include "diagnostics.h"
 
 /*------------------ Definitionen der anderen Versionen aufheben -------*/
 
@@ -219,6 +220,7 @@ struct ftime
   unsigned ft_year      : 7;
 };
 
+#ifndef __MINGW32__
 struct timezone
 {
 	int tz_minuteswest; /* Minutes west of GMZ */
@@ -226,6 +228,7 @@ struct timezone
 };
 
 typedef unsigned int socklen_t;
+#endif
 
 /* ------------------ Globale Variablen der Win32-Version --------------*/
 
@@ -252,7 +255,7 @@ typedef unsigned int socklen_t;
  extern char start_name[MAXPATH];
  extern char stop_name[MAXPATH];
 
- char cShell[512];      /* Pfad zu Shell */
+ extern char cShell[512];      /* Pfad zu Shell */
 
  static u_long  noblockingmode = FIONBIO;
  /* Variable fuer Winsock Initialisieren. */

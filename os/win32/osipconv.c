@@ -1,15 +1,16 @@
 
 #include "tnn.h"
 #ifdef OS_IPLINK
+struct iptbl ip_tbl[MAX_ROUTEN];
 
 /* Zeiger auf das Aktuelle Interface. */
 static T_INTERFACE *ifpp;
 
 
 /* Struktur (sockaddr_in) fuer Server definieren. */
-struct sockaddr_in myaddr_in;
+static struct sockaddr_in myaddr_in;
 /* Struktur (sockaddr_in) fuer client definieren. */
-struct sockaddr_in peeraddr_in;
+static struct sockaddr_in peeraddr_in;
 
 
 /* Ein Connect zum TCPIP-Nachbarn aufbauen. */
@@ -95,7 +96,7 @@ int IPConvConnectOS(char *call, char *upcall, BOOLEAN flag)
   if (connect (fd, (struct sockaddr *) &myaddr_in, sizeof (struct sockaddr_in)) == EOF)
   {
     /* ggf. Logbuch fuehren. */
-    T_LOGL1(TRUE, "(IPConvConnectOS):\nConnect nicht möglich (IP-Addr: %s)!\n"
+    T_LOGL1(TRUE, "(IPConvConnectOS):\nConnect nicht mï¿½glich (IP-Addr: %s)!\n"
                   , ip_tbl[i].hostname);
 
     /* Schliesse Socket. */

@@ -53,6 +53,9 @@
 #ifdef SIXPACK
 
 #include "6pack.h"
+#ifdef ATTACH
+int iDescriptor = -1;
+#endif
 
 /************************************************************************/
 /* Initialisieren einer TNC-Struktur                                    */
@@ -523,34 +526,11 @@ void Sixpack_RX(void)
   UBYTE cBuf[520];
   LONG          iRet;
   register int  iCounter;
-  register int  iSelRet;
   UBYTE cRXByte;
   UBYTE uNumTNC;
 
-  /* ganz wichtig, Linux modifiziert in select() diese Werte !!! */
-  tv.tv_sec = 0;
-  tv.tv_usec = 0;
-
-  FD_ZERO(&rset);
-  FD_SET((unsigned int)iDescriptor, &rset);
-
-  iSelRet = select(iDescriptor + 1, &rset, NULL, NULL, &tv);
-
-  /* Immer pruefen ob daten anliegen. */
-  iSelRet = TRUE;
-
-  /* Fehler bei select() ? */
-  if (iSelRet < 0)
-  {
-    LOGL4("-RING-: Fehler %n bei select() : %s", errno, strerror(errno));
-    Sixpack_l1exit();
-    Sixpack_l1init();
-    return;
-  }
-
-  /* select() hat keinen lesbaren Descriptor gefunden, */
-  /* oder es ist nicht unserer */
-  if ((iSelRet == 0) || (!FD_ISSET(iDescriptor, &rset)))
+  /* Win32 serial HANDLEs are not Winsock sockets; reads are nonblocking. */
+  if (iDescriptor == -1)
     return;
 
   memset(cBuf, 0, sizeof(cBuf));

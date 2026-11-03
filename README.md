@@ -140,3 +140,40 @@ sh tests/monitor-hostmode.sh
 
 Weitere Unterlagen: [doc](doc/), [Versionshistorie](history/) und
 [Lizenzbedingungen](alas.txt).
+
+## Windows: portables 32-Bit-CB-Testpaket
+
+Das Windows-Paket wird aus diesen CB-Quellen gebaut, nicht aus dem
+AFU-Repository `tnn179`. Es enthaelt TNN, Hilfsprogramme, eine neutrale
+Offline-Konfiguration, lokale Laufzeit-/Crashlogs, Dokumentation, Lizenz,
+passenden Quellcode in `SOURCE.zip` und SHA256-Pruefsummen.
+Es ist Testsoftware; echte TNCs und serielle Schnittstellen sind nicht
+verifiziert. XP bleibt ohne Internetzugang.
+
+Unter Debian/Ubuntu mit MinGW-w64, Wine (einschliesslich 32-Bit-Unterstuetzung),
+Xvfb, GCC, Make, Git, Perl, Zip und Unzip:
+
+```bash
+xvfb-run -a sh tests/package-win32.sh /absoluter/pfad/zur/ausgabe
+```
+
+Das Skript verwendet ausschliesslich den eingecheckten Stand (`git archive
+HEAD`), keine lokalen Konfigurationen. `BUILD.txt` nennt Repository und
+genauen Commit. Direkter Cross-Build in einer separaten Quellkopie:
+
+```bash
+make -f tnn32.mak all PREFIX=i686-w64-mingw32-
+```
+
+Keine SDK-Header veraendern und das historische `hardpatch`-Target nicht
+ausfuehren. Hardwarebeispiele und Diagnosegrenzen stehen in
+[der Paket-Anleitung](os/win32/portable/README.txt).
+
+Der GitHub-Workflow `Windows portable CB test package` baut bei Pull Requests,
+`v*`-Tags, manueller Ausloesung und veroeffentlichten Releases. ZIP und
+Pruefsumme stehen als Workflow-Artefakt bereit; bei einem veroeffentlichten
+Release werden sie automatisch angehaengt. Der Workflow erstellt selbst
+keinen Release. Bei nachtraeglich angehaengten Builds aus einem neueren
+Commit muss der abweichende Quellstand in den Release-Notizen genannt werden;
+die automatisch angebotenen Tag-Quellarchive sind dann nicht der passende
+Windows-Quellcode. Dafuer ist `SOURCE.zip` im Paket massgeblich.

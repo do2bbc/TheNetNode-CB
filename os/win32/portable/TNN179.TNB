@@ -1,0 +1,3 @@
+; Portable CB test configuration: deliberately no ATTACH commands.
+; Enable only interfaces that you have configured for your own station.
+CONV HOSTNAME cbtest
