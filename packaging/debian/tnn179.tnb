@@ -1,0 +1,2 @@
+; Offline test: no ATTACH commands or automatic links.
+CONV HOSTNAME cbtest

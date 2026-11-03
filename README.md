@@ -179,3 +179,41 @@ keinen Release. Bei nachtraeglich angehaengten Builds aus einem neueren
 Commit muss der abweichende Quellstand in den Release-Notizen genannt werden;
 die automatisch angebotenen Tag-Quellarchive sind dann nicht der passende
 Windows-Quellcode. Dafuer ist `SOURCE.zip` im Paket massgeblich.
+
+## Debian-Pakete: amd64, arm64 und armhf
+
+Die `.deb`-Pakete sind fuer Debian 12 / Raspberry Pi OS Bookworm und neuer.
+Mit `dpkg --print-architecture` die passende Architektur bestimmen:
+
+- `amd64`: 64-Bit-Intel/AMD-PC.
+- `arm64`: Raspberry Pi mit 64-Bit-Betriebssystem.
+- `armhf`: ARMv7 mit 32-Bit-Betriebssystem (Pi 2 und neuer).
+  **Nicht fuer Pi 1, Pi Zero oder Zero W mit ARMv6.**
+
+Installieren mit `sudo apt install ./tnn-cb_*.deb`.
+Installiert werden `/usr/bin/tnn-cb`, Hilfsprogramme und Dokumentation;
+kein Dienst wird angelegt oder gestartet. Bestehende Dateien unter
+`/usr/local/tnn` und eigene Laufzeitkonfigurationen bleiben unangetastet.
+Eine ausfuehrliche Anleitung fuer Neuinstallation und Umstellung steht unter
+`/usr/share/doc/tnn-cb/README.Debian` beziehungsweise
+[hier im Quellcode](packaging/debian/README.Debian).
+
+Pakete enthalten `BUILD.txt`, ALAS und die kompletten passenden Quellen als
+`SOURCE.tar.gz`. ARM-Binaerdateien werden crosskompiliert und mit QEMU getestet;
+dies ersetzt keinen Funkhardwaretest. Die Windows-Diagnosefunktion wird nicht
+als Linux-Funktion ausgegeben.
+
+Reproduzieren auf einem amd64-Debian-12-Buildsystem mit GCC, Make, Git,
+dpkg-dev, Python 3, QEMU User und den Debian-Crosscompilern/Sysroots fuer
+AArch64 und ARM hard-float:
+
+```bash
+sh tests/package-debian.sh arm64 /absoluter/pfad/zur/ausgabe
+python3 tests/debian-package.py /absoluter/pfad/zur/ausgabe/*.deb arm64
+```
+
+Entsprechend `amd64` oder `armhf` verwenden. Der Workflow `Debian CB packages`
+baut und prueft alle drei Architekturen bei Pull Requests, manueller Ausloesung,
+`v*`-Tags und veroeffentlichten Releases; beim Release werden die Pakete und
+SHA256-Pruefsummen automatisch angehaengt. Keine lokalen Node-Dateien gelangen
+in die Pakete.

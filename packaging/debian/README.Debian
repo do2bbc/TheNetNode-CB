@@ -1,0 +1,52 @@
+TheNetNode-CB: Debian 12 / Raspberry Pi OS Bookworm
+================================================
+
+Architecture:
+  amd64: 64-bit Intel/AMD Debian.
+  arm64: 64-bit Raspberry Pi OS/Debian (Pi 3 and newer with a 64-bit OS).
+  armhf: Debian armhf, ARMv7 hard-float (Pi 2/3/4/5 with a 32-bit OS).
+         NOT for original Pi 1, Pi Zero or Zero W (ARMv6).
+Use "dpkg --print-architecture", not the CPU model, to choose the package.
+Requires glibc 2.36 or newer (Debian 12 / Raspberry Pi OS Bookworm or newer).
+ARM builds are cross-compiled; packaged node startup/login/shutdown are tested
+with QEMU, not certified on every Pi model or radio interface.
+
+Install:
+  sudo apt install ./tnn-cb_*.deb
+
+The package installs /usr/bin/tnn-cb and helpers under /usr/lib/tnn-cb.
+It does NOT install a service, start a node, open network ports, replace
+/usr/local/tnn/tnn, or write to existing node configurations or saved state.
+The Windows-only tnn-runtime.log/tnn-crash.log feature is not included.
+
+Fresh offline test, as a normal user in a NEW empty directory:
+  mkdir -m 700 "$HOME/tnn-cb-test"
+  cd "$HOME/tnn-cb-test"
+  cp -R /usr/share/doc/tnn-cb/examples/. .
+  cp /usr/share/tnn-cb/ohu.txt /usr/share/tnn-cb/ohs.txt .
+  mkdir textcmd pacsat httpd speech msg
+  cp /usr/share/tnn-cb/msg.usr /usr/share/tnn-cb/msg.sys msg/
+  cp /usr/share/tnn-cb/config.top .
+  /usr/bin/tnn-cb
+
+Console password for the OFFLINE template: TESTONLY
+Press Esc, type c, Enter for the local node console.
+Press Esc, type QUIT, Enter for a clean shutdown.
+Before activating any network/radio interface: set the node call, alias and
+BOTH passwords in tnn179.pas. Never use these public example passwords online.
+No radio, peers, or network listeners are enabled by the template.
+First-run missing statistics warnings are expected.
+
+Existing node:
+Back up the run directory and stop TNN cleanly first. Change your own launch
+command/service to /usr/bin/tnn-cb, keeping its existing working directory,
+arguments and configuration. Helpers stay at /usr/lib/tnn-cb/userexe and
+/usr/lib/tnn-cb/sysexe; adapt your existing tnn179.pas deliberately if needed.
+Do NOT copy examples over a running node or run "make baseinstall".
+apt package updates do NOT restart a node: stop/start it yourself to use the
+new binary. Removal leaves your own run directory untouched.
+
+BUILD.txt records the exact source commit. SOURCE.tar.gz contains the matching
+complete sources including build/packaging scripts; copyright contains ALAS.
+If attached to an older release, the tag's source downloads are NOT necessarily
+the source of this binary package. This is CB test software, not AFU software.
