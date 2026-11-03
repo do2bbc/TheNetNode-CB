@@ -147,6 +147,8 @@ Das Windows-Paket wird aus diesen CB-Quellen gebaut, nicht aus dem
 AFU-Repository `tnn179`. Es enthaelt TNN, Hilfsprogramme, eine neutrale
 Offline-Konfiguration, lokale Laufzeit-/Crashlogs, Dokumentation, Lizenz,
 passenden Quellcode in `SOURCE.zip` und SHA256-Pruefsummen.
+Start, Konsolenanmeldung, Minuten-Heartbeat und sauberes Beenden wurden
+unter deutschem Windows XP SP3 x86 in VirtualBox getestet.
 Es ist Testsoftware; echte TNCs und serielle Schnittstellen sind nicht
 verifiziert. XP bleibt ohne Internetzugang.
 

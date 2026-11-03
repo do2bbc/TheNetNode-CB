@@ -3,8 +3,9 @@ TNN 1.79 - portable Win32 CB TEST BUILD
 
 This package targets 32-bit Windows XP (Win32 API 5.1, MSVCRT runtime).
 It also targets the 32-bit compatibility environment of XP x64 and newer
-Intel/AMD Windows. It is NOT certified on real Windows XP. A Wine test is
-not proof that Windows XP or a physical TNC works.
+Intel/AMD Windows. Basic startup, console login, the one-minute heartbeat
+and clean Esc-QUIT shutdown were tested on German Windows XP SP3 x86 in
+VirtualBox. This is not hardware certification or a physical TNC test.
 Windows XP is obsolete: keep it on an isolated test network, not exposed
 to the Internet. This is beta software, not a production-ready release.
 No commercial or operational fitness is implied.
@@ -79,8 +80,11 @@ The old pfhadd target actually contains a direct parallel-port I/O program
 which is not a Windows application and is deliberately not included.
 License: ALAS.txt. Complete matching source and build instructions are
 included in SOURCE.zip. Do not redistribute without the license/source.
-The version retains its upstream afu61 lineage; "(CB)" identifies disabled
-amateur-radio callsign validation, not a separate upstream patch level.
+These are the native TheNetNode-CB sources (1.79cb55), not an AFU build
+with a changed banner. Repository: https://github.com/do2bbc/TheNetNode-CB
+BUILD.txt identifies the exact source commit. If this package is attached
+to an older release, use its included SOURCE.zip for the matching sources,
+not the release page's automatically generated tag source archives.
 
 LOCAL DIAGNOSTICS
 -----------------

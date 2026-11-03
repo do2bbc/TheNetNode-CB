@@ -16,6 +16,10 @@ git archive HEAD | tar -C "$source" -xf -
 cd "$source"
 grep -q '^#define CALLCHECK$' include/allmodif.h
 grep -q '^#define HOSTMYCALL$' include/allmodif.h
+version=$(awk '$2 == "__VER__" || $2 == "__AUTHOR__" || $2 == "__PATCH__" {
+  gsub(/"/, "", $3); printf "%s", $3
+}' src/version.c)
+test -n "$version"
 zip -qr "$package/SOURCE.zip" .
 make -f tnn32.mak all PREFIX=i686-w64-mingw32- -j2
 sh tests/win32-build.sh
@@ -57,7 +61,7 @@ result=0
 timeout 68 wine "$source/os/win32/tnn32/tnn32.exe" -v > console.log 2>&1 || result=$?
 test "$result" -eq 124
 grep -q '(Win32) (CB)' console.log
-grep -q '1.79cb55' console.log
+grep -Fq "$version" console.log
 grep -q 'password:' console.log
 grep -q 'event=HEARTBEAT' tnn-runtime.log
 test ! -s tnn-crash.log
