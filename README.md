@@ -136,6 +136,7 @@ sh tests/runtime-regressions.sh
 sh tests/startup-banner.sh
 sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
+sh tests/hostmode-reconnect.sh
 ```
 
 Weitere Unterlagen: [doc](doc/), [Versionshistorie](history/) und

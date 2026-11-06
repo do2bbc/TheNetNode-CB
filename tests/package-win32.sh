@@ -28,6 +28,7 @@ sh tests/runtime-regressions.sh
 sh tests/startup-banner.sh
 sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
+sh tests/hostmode-reconnect.sh
 i686-w64-mingw32-gcc -DWIN32 -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 \
   -Iinclude -Ios/win32 -Ios/linux -Isrc -static \
   -Wl,--subsystem,console:5.01 tests/win32-diagnostics.c \

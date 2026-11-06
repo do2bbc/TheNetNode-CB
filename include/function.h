@@ -449,6 +449,7 @@ BOOLEAN conn_ok(const char *);
 
 void    init_host(void);
 void    exit_host(void);
+void    reset_hostmode(void);
 void    hostsv(void);
 BOOLEAN runbatch(char *);
 void    hostim(void);

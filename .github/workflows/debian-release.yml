@@ -52,6 +52,7 @@ jobs:
           sh tests/startup-banner.sh
           sh tests/socket-set.sh
           sh tests/monitor-hostmode.sh
+          sh tests/hostmode-reconnect.sh
       - uses: actions/upload-artifact@v6
         with:
           name: TNN-CB-Debian12-${{ matrix.arch }}

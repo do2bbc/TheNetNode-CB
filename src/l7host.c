@@ -91,6 +91,11 @@ char hmdest[L2IDLEN] = {' ', ' ', ' ', ' ', ' ', ' ', '\140'};
 char hmdigil[L2VLEN+1] = "";
 WORD hmport = 0;
 
+static int hmstat = HMSCHNL;
+static int hmch;
+static int hmcmd;
+static int hmlen;
+
 static const char *tmp_tnb = "TNB.$$$";
 extern char    *hm_err[];
 
@@ -148,6 +153,26 @@ static void     sttoch(unsigned);
 /*                                                                      */
 /************************************************************************/
 
+
+/************************************************************************/
+/*                                                                      */
+/* Verbindungsspezifischen Hostmode-Zustand zuruecksetzen               */
+/*                                                                      */
+/************************************************************************/
+void
+reset_hostmode(void)
+{
+  ishmod = FALSE;
+  hmstat = HMSCHNL;
+  hmch = hmcmd = hmlen = 0;
+  actch = 1;
+  hlixfl = FALSE;
+  incnt = 0;
+  inbufp = hinbuf;
+  blipoi = hinbuf;
+  blicnt = 0;
+  console_login_status = 0;
+}
 
 /************************************************************************/
 /*                                                                      */
@@ -517,10 +542,6 @@ srvhch(void)
 {
   MBHEAD         *mbp;
   unsigned        ch;
-  static int      hmstat = 0;           /* Hostmode Status              */
-  static int      hmch;                 /* Hostmode Kanal               */
-  static int      hmcmd;                /* Hostmode Befehl              */
-  static int      hmlen;                /* Hostmode Datenbytes          */
 
 /* Kanaele disconnecten, wenn disco gefordert und alle Info abgeholt    */
 

@@ -84,6 +84,8 @@ static void     watchdog_init(void);
 #ifdef DEBUG_MODUS
 static void     sigterm(int);
 #endif
+static void     clear_host_queue(void);
+static void     disconnect_socket_console(void);
 static void     host_to_queue(char *, int);
 static void     setfiletime(struct ffblk *);
 
@@ -700,11 +702,7 @@ update_timer(void)
       {
         len = read(consockfd, buffer, 1024);
         if ((len == -1) || (len == 0))
-        {
-          close(consockfd);
-          consockfd = -1;
-          console_type = CONS_SOCKET_WAITING;
-        }
+          disconnect_socket_console();
         else
           host_to_queue(buffer, len);
       }
@@ -1344,9 +1342,8 @@ init_console(void)
 /*                                                                      */
 /*                                                                      */
 /************************************************************************/
-
-void
-exit_console(void)
+static void
+clear_host_queue(void)
 {
   struct hostqueue *hostq_ptr;
 
@@ -1359,6 +1356,32 @@ exit_console(void)
 
   hostq_last = NULL;
   hostq_len = 0;
+}
+
+/************************************************************************/
+/*                                                                      */
+/*                                                                      */
+/************************************************************************/
+static void
+disconnect_socket_console(void)
+{
+  if (consockfd >= 0)
+    close(consockfd);
+
+  consockfd = -1;
+  clear_host_queue();
+  reset_hostmode();
+  console_type = CONS_SOCKET_WAITING;
+}
+
+/************************************************************************/
+/*                                                                      */
+/*                                                                      */
+/************************************************************************/
+void
+exit_console(void)
+{
+  clear_host_queue();
   exit_proc();
 
   if (console_type != CONS_TERM_RUNNING)
@@ -1482,12 +1505,8 @@ hputc(char c)
 
       res = write(consockfd, &c, 1);
 
-      if (res == -1)
-       {
-        close(consockfd);
-        consockfd = -1;
-        console_type = CONS_SOCKET_WAITING;
-       }
+      if (res != 1)
+        disconnect_socket_console();
 
       break;
 
