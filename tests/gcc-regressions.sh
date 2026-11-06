@@ -28,6 +28,7 @@ typedef enum { FALSE, TRUE } BOOLEAN;
 typedef enum { ERRORS = -1, NO, YES } TRILLIAN;
 #define NUL '\0'
 #define L2IDLEN 7
+#define L2CALEN (L2IDLEN - 1)
 #define NAMESIZE 16
 typedef struct {
   char name[NAMESIZE + 1], nickname[NAMESIZE + 1];
@@ -132,10 +133,11 @@ int main(void)
   assert(name[NAMESIZE] == ':');
   assert(host_ok("dno484") && !host_ok("1234") && !host_ok("ab/c"));
 
-  char call[L2IDLEN + 1];
-  memset(call, '?', sizeof(call));
-  call3str(call, "ABC");
-  assert(memcmp(call, "ABC   \0\0", sizeof(call)) == 0);
+  struct { char call[L2IDLEN]; char canary; } callbuf;
+  memset(&callbuf, '?', sizeof(callbuf));
+  call3str(callbuf.call, "ABC");
+  assert(memcmp(callbuf.call, "ABC   \0", L2IDLEN) == 0);
+  assert(callbuf.canary == '?');
   char input[82], password[81], encoded[81], decoded[81];
   memset(input, 'A', 80);
   input[80] = '\0';

@@ -38,7 +38,7 @@ void call3str(char *id1, const char *id2)
          j = 0;
 
   /* Frischen Buffer besorgen. */
-  memset(id1, 0, L2IDLEN + 1);
+  memset(id1, 0, L2IDLEN);
 
   /* Rufzeichen ohne SSID einlesen. */
   for (i = 0; i < L2IDLEN - 1; i++, j++)
@@ -58,7 +58,7 @@ void call3str(char *id1, const char *id2)
   }
 
   /* Nullzeichen setzen. */
-  id1[L2IDLEN] = 0;
+  id1[L2CALEN] = 0;
 }
 
 /* Lade Profil-TBL "profil.tab" ein. */
