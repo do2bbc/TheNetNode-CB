@@ -107,6 +107,7 @@ WORD    max_device;
 WORD    used_l1ports;
 WORD    l1ptab[L2PNUM];
 WORD    l2ptab[L1PNUM];
+WORD    kisschannel[L2PNUM];
 
 #ifdef VANESSA
 extern BOOLEAN van_test(int);
@@ -1251,7 +1252,8 @@ void send_kisscmd(int l2prt, int cmd, int value)
     len++;
   }
 
-  *tx_bufptr++ = (char)cmd;
+  *tx_bufptr++ = (char)(cmd | (l1pp->kisstype == KISS_NORMAL
+                             ? kisschannel[l2prt] << 4 : 0));
   ++len;
 
   if ((l2prt != 0xff) && (cmd != CMD_TNCRES))   /* Parameter folgt      */
@@ -1360,6 +1362,8 @@ static void kissframe_to_tnc(int l2prt, BOOLEAN recovery)
     switch (l1pp->kisstype)     /* KISS-Befehl "Daten folgen" abhaengig */
     {                           /* vom KISS-Modus                       */
       case KISS_NORMAL:         /* KISS einfach                         */
+        *tmp_buffer = (char)(kisschannel[l2prt] << 4);
+        break;
       case KISS_SCC:
         *tmp_buffer = 0x00;
         break;
@@ -1476,6 +1480,8 @@ void framedata_to_queue(int dev, char *buffer, int len)
   char *bufptr;
   register int i;
   UBYTE ch;
+  BOOLEAN escaped_header;
+  WORD port;
   DEVICE *l1pp;
   static WORD k;
 
@@ -1486,7 +1492,31 @@ void framedata_to_queue(int dev, char *buffer, int len)
 
   for (bufptr = buffer, i = 0; i < len; ++i, bufptr++)
   {
+    escaped_header = FALSE;
     ch = *bufptr;                       /* 1 Zeichen aus Puffer holen   */
+    if (l1pp->kisstype == KISS_NORMAL)
+    {
+      if (l1pp->rx_state == ST_PORT && ch == FESC)
+      {
+        l1pp->rx_state = ST_PORT_ESC;
+        continue;
+      }
+      if (l1pp->rx_state == ST_PORT_ESC)
+      {
+        l1pp->rx_state = ST_PORT;
+        if (ch == TFEND)
+          ch = FEND;
+        else if (ch == TFESC)
+          ch = FESC;
+        else
+        {
+          l1pp->rx_state = ch == FEND ? ST_PORT : ST_BEGIN;
+          l1pp->bad_frames++;
+          continue;
+        }
+        escaped_header = TRUE;
+      }
+    }
     switch (l1pp->rx_state)
     {
       case ST_BEGIN:                    /* Frameanfang suchen           */
@@ -1494,22 +1524,31 @@ void framedata_to_queue(int dev, char *buffer, int len)
           l1pp->rx_state = ST_PORT;
         break;
       case ST_PORT:                     /* Portnummer folgt             */
-        if (ch != FEND)                 /* zusaetzliche FEND ignorieren */
+        if (ch != FEND || escaped_header)
         {
           switch (l1pp->kisstype)
           {
             case KISS_NORMAL:
+              if ((ch & 0x0F) == 0)
+              {
+                for (port = 0; port < L2PNUM; ++port)
+                  if (l1ptab[port] == dev && kisschannel[port] == (ch >> 4))
+                    break;
+                if (port < L2PNUM)
+                  l1pp->rx_port = port;
+                else
+                {
+                  l1pp->rx_state = ST_BEGIN;
+                  l1pp->bad_frames++;
+                }
+              }
+              else
+              {
+                l1pp->rx_state = ST_BEGIN;
+                l1pp->bad_frames++;
+              }
+              break;
             case KISS_SCC:
-
-/************************************************************************/
-/*                                                                      */
-/* KISS einfach: Die Portnummer ist als Bit 4-7 kodiert. Daher sind     */
-/* eigentlich 16 Ports moeglich. Dies wird von dieser Software aber     */
-/* (noch?) nicht unterstuetzt. Gibt es ueberhaupt TNC-Software, die     */
-/* normalen KISS-Modus mit mehreren Ports unterstuetzt? Wer kann das    */
-/* einbauen und testen?                                                 */
-/*                                                                      */
-/************************************************************************/
 
               if ((ch & 0x8F) == 0x00)
                 l1pp->rx_port = (ch & 0x70) >> 4;
@@ -1573,8 +1612,7 @@ void framedata_to_queue(int dev, char *buffer, int len)
 
 /************************************************************************/
 /*                                                                      */
-/* Die Portnummer wird jetzt ueberprueft. Ausser beim Tokenring MUSS es */
-/* 0 sein.                                                              */
+/* Nur KISS und Tokenring unterstuetzen mehrere Unterports.             */
 /*                                                                      */
 /************************************************************************/
 
@@ -1582,7 +1620,7 @@ void framedata_to_queue(int dev, char *buffer, int len)
           {
             if (l1pp->rx_state != ST_BEGIN)
             {
-              if (l1pp->rx_port != 0x00)
+              if (l1pp->kisstype != KISS_NORMAL && l1pp->rx_port != 0x00)
               {
                 l1pp->rx_state = ST_BEGIN;
                 l1pp->bad_frames++;
@@ -1602,7 +1640,7 @@ void framedata_to_queue(int dev, char *buffer, int len)
         switch (ch)
         {
           case FEND:                            /* Frameende?           */
-            if (l1pp->kisstype != KISS_TOK)     /* ggf. Portnummer aus  */
+            if (l1pp->kisstype != KISS_TOK && l1pp->kisstype != KISS_NORMAL)
               l1pp->rx_port = l2ptab[dev];      /* Tabelle holen        */
             frame_valid(l1pp->rx_port,          /* Frame pruefen und    */
                         l1pp->rx_buffer,        /* an L2 weitergeben    */
@@ -1614,14 +1652,15 @@ void framedata_to_queue(int dev, char *buffer, int len)
             l1pp->rx_state = ST_ESC;
             break;
           default:                              /* normales Zeichen     */
-            *l1pp->rx_bufptr = ch;
-            l1pp->rx_bufptr++;
-            l1pp->rx_buflen++;
-            if (l1pp->rx_buflen > MAXKISSLEN)   /* Frame zu lang?       */
+            if (l1pp->rx_buflen >= MAXKISSLEN)
             {
               l1pp->rx_state = ST_BEGIN;
               l1pp->bad_frames++;
+              break;
             }
+            *l1pp->rx_bufptr = ch;
+            l1pp->rx_bufptr++;
+            l1pp->rx_buflen++;
             break;
         }
         break;
@@ -1629,28 +1668,28 @@ void framedata_to_queue(int dev, char *buffer, int len)
         switch (ch)
         {
           case TFEND:                   /* FESC / TFEND -> FEND         */
+            if (l1pp->rx_buflen >= MAXKISSLEN)
+            {
+              l1pp->rx_state = ST_BEGIN;
+              l1pp->bad_frames++;
+              break;
+            }
             *l1pp->rx_bufptr = FEND;
             l1pp->rx_bufptr++;
             l1pp->rx_buflen++;
-            if (l1pp->rx_buflen > MAXKISSLEN)   /* Frame zu lang?       */
+            l1pp->rx_state = ST_DATA;
+            break;
+          case TFESC:                   /* FESC / TFESC -> FESC         */
+            if (l1pp->rx_buflen >= MAXKISSLEN)
             {
               l1pp->rx_state = ST_BEGIN;
               l1pp->bad_frames++;
+              break;
             }
-            else
-              l1pp->rx_state = ST_DATA;
-            break;
-          case TFESC:                   /* FESC / TFESC -> FESC         */
             *l1pp->rx_bufptr = FESC;
             l1pp->rx_bufptr++;
             l1pp->rx_buflen++;
-            if (l1pp->rx_buflen > MAXKISSLEN)   /* Frame zu lang?       */
-            {
-              l1pp->rx_state = ST_BEGIN;
-              l1pp->bad_frames++;
-            }
-            else
-              l1pp->rx_state = ST_DATA;
+            l1pp->rx_state = ST_DATA;
             break;
           default:
             l1pp->rx_state = ST_BEGIN;

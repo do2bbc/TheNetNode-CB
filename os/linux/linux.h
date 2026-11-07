@@ -115,6 +115,7 @@
 #define ST_TOKEN 5
 #define ST_TNCRES 6
 #define ST_DAMA 7
+#define ST_PORT_ESC 8
 
 /* special codes used for KISS-protocol */
 #define FEND 0xC0
@@ -215,6 +216,7 @@ struct ftime
  extern char tnn_socket[MAXPATH];
  extern char start_name[MAXPATH];
  extern char stop_name[MAXPATH];
+ extern WORD kisschannel[L2PNUM];
 
  extern char cShell[512];      /* Pfad zu Shell */
 

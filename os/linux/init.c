@@ -541,6 +541,7 @@ read_init_file(int argc, char *argv[])
   for (i = 0; i < L2PNUM; ++i)
   {
     l1ptab[i] = -1;
+    kisschannel[i] = 0;
     CLR_L1MODE(i);
     SET_L1MODE(i, MODE_off);
   }

@@ -68,6 +68,32 @@ Die Installation richtet keinen systemd-Dienst automatisch ein. Fuer einen
 ersten Test reicht der Konsolenstart; ein vorhandener Dienst kann weiterhin
 verwendet werden.
 
+### TNC3S: zwei Funkports ueber eine serielle KISS-Verbindung (Linux)
+
+In `tnn179.tnb` vor den zugehoerigen `PORT`-Kommandos:
+
+```text
+ATTACH PORT=0 KTYP=KISS SPEED=19200 DEVICE=/dev/ttyS0 CHANNEL=0
+ATTACH PORT=1 KTYP=KISS SPEED=19200 DEVICE=/dev/ttyS0 CHANNEL=1
+```
+
+`PORT` ist der TNN-Port, `CHANNEL` der KISS-Unterport (0..15). `SPEED`
+ist die serielle Baudrate, nicht die Funkbaudrate; sie muss zur
+KISS-Firmware des TNC passen. Die Zuordnung der beiden Modems zu den
+KISS-Unterports anhand der TNC-Firmware pruefen.
+
+Beide Eintraege muessen denselben Geraetepfad und dieselbe Baudrate verwenden.
+TNN oeffnet die Leitung nur einmal und ordnet Empfang, Senden und
+KISS-Parameter dem jeweiligen Unterport zu. `DETACH` eines Ports laesst die
+anderen weiterlaufen; erst der letzte Port schliesst die Leitung.
+Ohne `CHANNEL` bleibt wie bisher Unterport 0 eingestellt. Die Zuordnung
+wird beim Speichern der Startkonfiguration mitgeschrieben.
+
+Das Geraet nicht gleichzeitig in `tnn.ini` ein zweites Mal konfigurieren
+oder durch MKISS/KISSATTACH bzw. ein anderes Programm oeffnen lassen.
+TNN benoetigt Lese-/Schreibzugriff auf die Schnittstelle. Diese Erweiterung
+gilt fuer `KTYP=KISS` unter Linux, nicht fuer SMACK, RMNC oder Windows.
+
 ## 3. Bestehende Installation aktualisieren
 
 Im Quellverzeichnis den neuen Stand holen und bauen:
@@ -136,6 +162,7 @@ sh tests/runtime-regressions.sh
 sh tests/startup-banner.sh
 sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
+sh tests/kiss-multiport.sh
 sh tests/hostmode-reconnect.sh
 ```
 

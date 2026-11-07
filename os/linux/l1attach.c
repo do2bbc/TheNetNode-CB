@@ -22,12 +22,14 @@ static BOOLEAN SearchKissType(UWORD Interface)
 #define ATT_KISSTYPE 2
 #define ATT_SPEED    3
 #define ATT_DEVICE   4
+#define ATT_CHANNEL  5
 
 ATTPRT attprt[] = {
   {"PORT",      ATT_PORT      },
   {"KTYP",      ATT_KISSTYPE  },
   {"SPEED",     ATT_SPEED     },
   {"DEVICE",    ATT_DEVICE    },
+  {"CHANNEL",   ATT_CHANNEL   },
   {NULL,        0             }
 };
 
@@ -69,6 +71,9 @@ ATTTYP attyp[] = {
 #define ATT_INV_OPTION 6
 #define ATT_INV_UDP    7
 #define ATT_INV_TCP    8
+#define ATT_INV_CHANNEL 9
+#define ATT_DEVICE_BUSY 10
+#define ATT_NO_DEVICE 11
 
 static const char *errormsg[] =
 {
@@ -81,6 +86,9 @@ static const char *errormsg[] =
  ,"Invalid Option."
  ,"Invalid UDP-Port."
  ,"Invalid TCP-Port."
+ ,"Invalid or duplicate KISS channel (0..15, KTYP=KISS only)."
+ ,"Device is busy or serial settings do not match."
+ ,"No free interface."
 };
 
 /* KissType setzen. */
@@ -307,6 +315,65 @@ BOOLEAN InitKissLink(UWORD port)
   DEVICE *l1att = &l1port[l1ptab[port]];
   int     Error = 0;
 
+  if (l1att->kisstype == KISS_NORMAL)
+  {
+    struct serial_struct serial;
+    l1att->kisslink = open(l1att->device, O_RDWR | O_NOCTTY);
+    if (l1att->kisslink < 0)
+    {
+      printf("Error: can't open device %s (%s)\n", l1att->device, strerror(errno));
+      return(TRUE);
+    }
+    if (tcgetattr(l1att->kisslink, &l1att->org_termios) < 0)
+      goto kiss_error;
+    l1att->wrk_termios = l1att->org_termios;
+    l1att->wrk_termios.c_cc[VTIME] = 0;
+    l1att->wrk_termios.c_cc[VMIN] = 0;
+    l1att->wrk_termios.c_iflag = IGNBRK;
+    l1att->wrk_termios.c_oflag = 0;
+    l1att->wrk_termios.c_lflag = 0;
+    l1att->wrk_termios.c_cflag &= ~(CSIZE | CSTOPB | PARENB | HUPCL | CRTSCTS);
+    l1att->wrk_termios.c_cflag |= CS8 | CREAD | CLOCAL;
+    if (l1att->speed != B0)
+    {
+      if (cfsetispeed(&l1att->wrk_termios, l1att->speed) < 0
+          || cfsetospeed(&l1att->wrk_termios, l1att->speed) < 0)
+        goto kiss_error;
+      if (l1att->speed == B38400 && l1att->speedflag != 0)
+      {
+        if (ioctl(l1att->kisslink, TIOCGSERIAL, &serial) < 0)
+          goto kiss_error;
+        serial.flags = (serial.flags & ~ASYNC_SPD_MASK) | l1att->speedflag;
+        if (ioctl(l1att->kisslink, TIOCSSERIAL, &serial) < 0)
+          goto kiss_error;
+      }
+    }
+    if (tcsetattr(l1att->kisslink, TCSADRAIN, &l1att->wrk_termios) < 0)
+      goto kiss_error;
+    if (l1att->speed == B0)
+    {
+      int flags = fcntl(l1att->kisslink, F_GETFL);
+      if (flags < 0 || fcntl(l1att->kisslink, F_SETFL, flags | O_NONBLOCK) < 0)
+      {
+        int saved_errno = errno;
+        if (tcsetattr(l1att->kisslink, TCSADRAIN, &l1att->org_termios) < 0)
+          printf("Error: can't restore device %s (%s)\n", l1att->device, strerror(errno));
+        errno = saved_errno;
+        goto kiss_error;
+      }
+    }
+    l1att->rx_state = ST_BEGIN;
+    l1att->rx_port = 0;
+    l1att->tx_port = 0;
+    return(FALSE);
+
+kiss_error:
+    printf("Error: can't configure device %s (%s)\n", l1att->device, strerror(errno));
+    close(l1att->kisslink);
+    l1att->kisslink = -1;
+    return(TRUE);
+  }
+
   switch(l1att->kisstype)
   {
     case KISS_TOK:
@@ -430,6 +497,9 @@ void ccpattach(void)
   WORD     att_kisstype = EOF;
   WORD     att_speed    = EOF;
   WORD     att_speedflag= EOF;
+  int      att_channel = -1;
+  int      shared_device = -1;
+  int      device, p;
   char     att_device[MAXPATH + 1];
 
   /* Sysop will aendern und noch was in der Zeile da ? */
@@ -458,21 +528,20 @@ void ccpattach(void)
       {
         /* PORT. */
         case ATT_PORT:
-          skipsp(&clicnt, &clipoi);
-
-          /* Port einlesen/pruefen. */
-          if ((port = (nxtnum(&clicnt, &clipoi) & 0x7F)) < L2PNUM)
           {
-            /* uninitialisierter Port */
-            if (l1ptab[port] != -1)
-              /* Port ist belegt. */
-              error = ATT_POR_BUSY;
+            char *end;
+            long number;
+            cBuf = ReadBuf(cBuf, FALSE);
+            number = strtol(cBuf, &end, 10);
+            if (end == cBuf || *end != '\0' || number < 0 || number >= L2PNUM)
+              error = ATT_INV_PORT;
+            else
+            {
+              port = (int)number;
+              if (l1ptab[port] != -1)
+                error = ATT_POR_BUSY;
+            }
           }
-            /* Portangabe liegt ausserhalb vom Grenzbereichs. */
-          else
-            /* Markiere Fehlermeldung. */
-            error = ATT_INV_PORT;
-
         break;
 
         /* KISSTYPE setzen. */
@@ -517,6 +586,19 @@ void ccpattach(void)
           att_speedflag = SetSpeedflag(cBuf);
 
         break;
+
+        case ATT_CHANNEL:
+          {
+            char *end;
+            long channel;
+            cBuf = ReadBuf(cBuf, FALSE);
+            channel = strtol(cBuf, &end, 10);
+            if (end == cBuf || *end != '\0' || channel < 0 || channel > 15)
+              error = ATT_INV_CHANNEL;
+            else
+              att_channel = (int)channel;
+          }
+          break;
 
         /* Device setzen. */
         case ATT_DEVICE:
@@ -680,6 +762,8 @@ void ccpattach(void)
                   putprintf(mbp, "%-5s" ,l1att->device);
                 break;
               }
+              if (l1att->kisstype == KISS_NORMAL)
+                putprintf(mbp, " CHANNEL=%d", kisschannel[port]);
               putstr("\r", mbp);
 
 
@@ -688,6 +772,71 @@ void ccpattach(void)
         prompt(mbp);
         seteom(mbp);
     }
+    return;
+  }
+
+  if (error == ATT_NO_OPTION && att_channel >= 0 && att_kisstype != KISS_NORMAL)
+    error = ATT_INV_CHANNEL;
+  if (att_channel < 0)
+    att_channel = 0;
+
+  if (error == ATT_NO_OPTION && att_device[0]
+      && (att_kisstype == KISS_NORMAL || att_kisstype == KISS_SMACK
+          || att_kisstype == KISS_RMNC || att_kisstype == KISS_TOK
+          || att_kisstype == KISS_TF || att_kisstype == KISS_6PACK))
+    for (device = 0; device <= max_device; ++device)
+      if (l1port[device].port_active
+          && strcmp(l1port[device].device, att_device) == 0
+          && (att_kisstype == KISS_NORMAL || l1port[device].kisstype == KISS_NORMAL))
+      {
+        if (att_kisstype != KISS_NORMAL || l1port[device].kisstype != KISS_NORMAL
+            || l1port[device].speed != att_speed
+            || l1port[device].speedflag != att_speedflag)
+          error = ATT_DEVICE_BUSY;
+        else
+        {
+          shared_device = device;
+          for (p = 0; p < L2PNUM; ++p)
+            if (l1ptab[p] == device && kisschannel[p] == att_channel)
+              error = ATT_INV_CHANNEL;
+        }
+        break;
+      }
+
+  if (error != ATT_NO_OPTION || port == EOF || att_kisstype == EOF
+      || (!att_device[0] && att_kisstype != KISS_AXIP && att_kisstype != KISS_LOOP)
+      || (att_kisstype == KISS_NORMAL && att_speed == EOF))
+  {
+    mbp = getmbp();
+    putprintf(mbp, "%s\r", errormsg[error]);
+    putstr("Syntax: ATT PORT=X KTYP=KISSTYPE SPEED=19200 DEVICE=SCHNITTSTELLE [CHANNEL=0..15]\r", mbp);
+    prompt(mbp);
+    seteom(mbp);
+    return;
+  }
+
+  if (shared_device >= 0)
+  {
+    l1ptab[port] = shared_device;
+    kisschannel[port] = att_channel;
+    mbp = getmbp();
+    putprintf(mbp, "Port %d Attached.\r", port);
+    prompt(mbp);
+    seteom(mbp);
+    return;
+  }
+
+  device = max_device + 1;
+  if (att_kisstype == KISS_NORMAL)
+    for (device = 0; device <= max_device; ++device)
+      if (!l1port[device].port_active)
+        break;
+  if (device >= L1PNUM)
+  {
+    mbp = getmbp();
+    putprintf(mbp, "%s\r", errormsg[ATT_NO_DEVICE]);
+    prompt(mbp);
+    seteom(mbp);
     return;
   }
 
@@ -718,41 +867,29 @@ void ccpattach(void)
   }
 #endif
 
-  /* Sind alle Einstellungen korrekt? */
-  if (  (port           == EOF)
-      /* Pruefen ob Kisstype */
-      ||(att_kisstype   == EOF)
-      /* und Device korrekt gesetzt sind. */
-      ||((att_device[0] == FALSE)
-      &&(att_kisstype != KISS_AXIP)
-      &&(att_kisstype != KISS_LOOP)))
-  {
-    mbp = getmbp();
-
-    /* Fehlermeldung ausgeben mit Syntax. */
-    putprintf(mbp, "%s\r", errormsg[error]);
-    putstr("Syntax:  ATT PORT=X KTYP=KISSTYPE SPEED=19200 DEVICE=SCHNITTSTELLE\r", mbp);
-    prompt(mbp);
-    seteom(mbp);
-    return;
-  }
-    /* Kisstype/Device sind OK. */
-  else
     {
       /* Port auf aktiv stellen. */
-      l1port[++max_device].port_active = TRUE;
+      if (device > max_device)
+        max_device = device;
+      l1port[device].port_active = TRUE;
       /* Kisstype setzen. */
-      l1port[max_device].kisstype      = att_kisstype;
+      l1port[device].kisstype          = att_kisstype;
       /* Baudrateflag setzen. */
-      l1port[max_device].speedflag     = att_speedflag;
+      l1port[device].speedflag         = att_speedflag;
       /* Baudrate setzen. */
-      l1port[max_device].speed         = att_speed;
+      l1port[device].speed             = att_speed;
       /* Device setzen. */
-      strcpy(l1port[max_device].device, att_device);
+      strcpy(l1port[device].device, att_device);
+      if (att_kisstype == KISS_NORMAL)
+      {
+        l1port[device].tnn_lockfile[0] = 0;
+        l1port[device].lock = -1;
+      }
 
       /* Port markieren. */
-      l1ptab[port] = max_device;
-      l2ptab[max_device] = port;
+      l1ptab[port] = device;
+      kisschannel[port] = att_channel;
+      l2ptab[device] = port;
 
       /* Zaehler L1Ports. */
       ++used_l1ports;
@@ -764,15 +901,17 @@ void ccpattach(void)
       {
         /* Es gab ein Fehler bei der Initialisierung. */
         /* Alle Werte zuruecksetzen. */
-        l1port[max_device].port_active = FALSE;
-        l1port[max_device].kisstype    = KISS_NIX;
-        l1port[max_device].speedflag   = 0;
-        l1port[max_device].speed       = 0;
-        l1port[max_device].device[0]   = 0;
+        l1port[device].port_active = FALSE;
+        l1port[device].kisstype    = KISS_NIX;
+        l1port[device].speedflag   = 0;
+        l1port[device].speed       = 0;
+        l1port[device].device[0]   = 0;
 
         l1ptab[port] = EOF;
-        l2ptab[port] = EOF;
-        --max_device;
+        l2ptab[device] = EOF;
+        kisschannel[port] = 0;
+        while (max_device >= 0 && !l1port[max_device].port_active)
+          --max_device;
         --used_l1ports;
 
         mbp = getmbp();
@@ -819,6 +958,43 @@ void ccpdetach(void)
         l1detach(port);
 
       l1att = &l1port[l1ptab[port]];
+      if (l1att->kisstype == KISS_NORMAL)
+      {
+        int device = l1ptab[port], other;
+        l1ptab[port] = EOF;
+        kisschannel[port] = 0;
+        if (l1att->rx_port == port)
+          l1att->rx_state = ST_BEGIN;
+        for (other = 0; other < L2PNUM; ++other)
+          if (l1ptab[other] == device)
+            break;
+        if (other < L2PNUM)
+          l2ptab[device] = other;
+        else
+        {
+          if (tcsetattr(l1att->kisslink, TCSADRAIN, &l1att->org_termios) < 0)
+            printf("Error: can't restore device %s (%s)\n", l1att->device, strerror(errno));
+          close(l1att->kisslink);
+          l1att->kisslink = -1;
+          if (l1att->tnn_lockfile[0])
+          {
+            unlink(l1att->tnn_lockfile);
+            l1att->tnn_lockfile[0] = 0;
+          }
+          l1att->port_active = FALSE;
+          l1att->kisstype = KISS_NIX;
+          l1att->device[0] = 0;
+          l2ptab[device] = EOF;
+          --used_l1ports;
+          while (max_device >= 0 && !l1port[max_device].port_active)
+            --max_device;
+        }
+        mbp = getmbp();
+        putprintf(mbp, "Port %d Detach.\r", port);
+        prompt(mbp);
+        seteom(mbp);
+        return;
+      }
       /* Schliesse Schnittstelle. */
       switch(l1att->kisstype)
       {
@@ -985,9 +1161,10 @@ void dump_attach(MBHEAD *mbp)
     switch(l1pp->kisstype)
     {
       case KISS_NORMAL:
-        putprintf(mbp, "KTYP=KISS SPEED=%d DEVICE=%s"
+        putprintf(mbp, "KTYP=KISS SPEED=%d DEVICE=%s CHANNEL=%d"
                      , ReadSpeed(l1pp->speed)
-                     , l1pp->device);
+                     , l1pp->device
+                     , kisschannel[port]);
       break;
 
       case KISS_SMACK:
