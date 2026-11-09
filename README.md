@@ -94,6 +94,58 @@ oder durch MKISS/KISSATTACH bzw. ein anderes Programm oeffnen lassen.
 TNN benoetigt Lese-/Schreibzugriff auf die Schnittstelle. Diese Erweiterung
 gilt fuer `KTYP=KISS` unter Linux, nicht fuer SMACK, RMNC oder Windows.
 
+### Dire Wolf: natives TCP-KISS (Linux und Win32)
+
+In Dire Wolf `KISSPORT 8001` konfigurieren. TNN verbindet sich als TCP-Client;
+eine serielle Bruecke ist nicht erforderlich. Als Sysop oder in der
+gespeicherten Startkonfiguration (`tnn179.tnb`, unter Windows `TNN179.TNB`)
+vor den zugehoerigen `PORT`-Zeilen:
+
+```text
+ATTACH PORT=7 KTYP=TCPKISS DEVICE=127.0.0.1:8001 CHANNEL=0
+ATTACH PORT=3 KTYP=TCPKISS DEVICE=127.0.0.1:8001 CHANNEL=1
+PORT 7 NAME=DW0 ON MODE=1200
+PORT 3 NAME=DW1 ON MODE=1200
+```
+
+Portnummern, Namen und Funkparameter an die eigene Station anpassen.
+`CHANNEL` bezeichnet den Dire-Wolf-Funkkanal (0..15, Vorgabe 0), nicht den
+TNN-Port. Die Kanaele muessen in Dire Wolf existieren. Dieselbe
+`DEVICE`-Angabe teilt eine TCP-Verbindung; jeder Kanal darf darauf nur einmal
+zugeordnet werden. `DEVICE` akzeptiert einen IPv4-Hostnamen oder eine
+IPv4-Adresse mit TCP-Port (1..65535). Hostnamen werden beim ATTACH aufgeloest.
+Kein `SPEED` angeben; fuer TCP-KISS keine numerischen `kisstype`-Eintraege
+in `tnn.ini` verwenden.
+
+Nach Verbindungsabbruch versucht TNN alle fuenf Sekunden eine neue Verbindung
+und sendet die KISS-Parameter TXDELAY, Persistence, SlotTime, TXtail und
+FullDuplex erneut. Teilweise uebertragene Frames werden nicht wiederholt;
+die AX.25-Verbindung muss sie bei Bedarf erneut senden. TCP ist ein
+Bytestrom: fragmentierte Frames, mehrere Frames pro Empfang, Escape-Zeichen
+und kurze Schreibvorgaenge werden behandelt. `DETACH` entfernt nur den
+gewaehlten logischen Port; die letzte Zuordnung schliesst die Verbindung.
+Mit `SPARAM` die Konfiguration speichern.
+
+Dies ist **TCP-KISS-Kompatibilitaet**, nicht AGWPE, UDP-KISS, IPv6 oder eine
+Nachbildung der Dire-Wolf-Audiofunktionen. KISS liefert keine echte DCD-/PTT-
+Rueckmeldung; proprietaere DAMA-/Tokenring-Befehle werden nicht gesendet.
+Fuer Sendertests die Dire-Wolf-Kalibrierfunktion statt TNN `TEST` verwenden.
+Der KISS-Port ist unverschluesselt und nicht authentifiziert: nur lokal oder
+in einem vertrauenswuerdigen, abgeschotteten Netz betreiben.
+
+Die Offline-Podman-Pruefung baut Linux und Win32 und verwendet echtes
+Dire Wolf 1.6 (Debian 12), zwei ALSA-Nullkanaele, keine Audio-/PTT-Geraete
+und keine freigegebenen Host-Ports:
+
+```bash
+sh tests/direwolf-podman.sh
+```
+
+Der Testcontainer wird anschliessend entfernt; das lokale Build-Image bleibt
+fuer Wiederholungen erhalten. Zusaetzliche Transporttests pruefen alle 16
+KISS-Kanaele, Fehlerfaelle und Wiederverbindung nativ mit Sanitizern und unter
+Wine. Das ersetzt keine Tests auf echter Windows-Hardware oder am Funkgeraet.
+
 ## 3. Bestehende Installation aktualisieren
 
 Im Quellverzeichnis den neuen Stand holen und bauen:
@@ -169,6 +221,7 @@ sh tests/startup-banner.sh
 sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
 sh tests/kiss-multiport.sh
+sh tests/tcpkiss.sh
 sh tests/hostmode-reconnect.sh
 ```
 

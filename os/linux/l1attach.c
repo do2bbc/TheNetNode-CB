@@ -1,4 +1,5 @@
 #include "tnn.h"
+#include "tcpkiss.h"
 
 static ULONG   token_sent = 0L;
 
@@ -59,6 +60,7 @@ ATTTYP attyp[] = {
 #ifdef L1IRC
   {"IRC",       KISS_IRC      },
 #endif /* L1IRC */
+  {"TCPKISS",   KISS_TCP      },
   {NULL,        0             }
 };
 
@@ -502,6 +504,9 @@ void ccpattach(void)
   int      device, p;
   char     att_device[MAXPATH + 1];
 
+  if (tcpkiss_attach())
+    return;
+
   /* Sysop will aendern und noch was in der Zeile da ? */
   if (issyso() && skipsp(&clicnt, &clipoi))
   {
@@ -733,6 +738,9 @@ void ccpattach(void)
 
               switch(l1att->kisstype)
               {
+                case KISS_TCP:
+                  tcpkiss_dump(mbp, port);
+                break;
                 case KISS_AXIP:
                   putprintf(mbp, "%u" ,ntohs(my_udp));
                 break;
@@ -958,6 +966,8 @@ void ccpdetach(void)
         l1detach(port);
 
       l1att = &l1port[l1ptab[port]];
+      if (tcpkiss_detach(port))
+        return;
       if (l1att->kisstype == KISS_NORMAL)
       {
         int device = l1ptab[port], other;
@@ -1160,6 +1170,9 @@ void dump_attach(MBHEAD *mbp)
 
     switch(l1pp->kisstype)
     {
+      case KISS_TCP:
+        tcpkiss_dump(mbp, port);
+      break;
       case KISS_NORMAL:
         putprintf(mbp, "KTYP=KISS SPEED=%d DEVICE=%s CHANNEL=%d"
                      , ReadSpeed(l1pp->speed)

@@ -229,6 +229,7 @@ LINUXSRCS		+= $(LIN)/init.c $(LIN)/linux.c $(LIN)/l1linux.c
 LINUXSRCS		+= $(LIN)/axipx.c $(LIN)/ax25ip.c $(LIN)/kernelip.c
 LINUXSRCS		+= $(LIN)/kernelax.c $(LIN)/6pack.c
 LINUXSRCS		+= $(LIN)/l1attach.c $(LIN)/ostcpip.c $(LIN)/osipconv.c
+LINUXSRCS		+= $(SRC)/tcpkiss.c
 LINUXOBJS		:= $(LINUXSRCS:.c=.o)
 VANSRC			:= $(LIN)/vanlinux.c
 VANOBJ			:= $(LIN)/vanlinux.o
@@ -254,6 +255,7 @@ HDRNAMS			+=  system.h speech.h tnn.h typedef.h
 LINUXHDRS		:= $(patsubst %,$(HDR)/%,$(HDRNAMS))
 LINUXHDRS		+= $(LIN)/linux.h $(LIN)/vanlinux.h $(LIN)/linclude.h
 LINUXHDRS		+= $(LIN)/kernelip.h $(LIN)/kernelax.h $(LIN)/ax25ip.h
+LINUXHDRS		+= $(HDR)/tcpkiss.h
 GO32HDRS		:= $(patsubst %,$(HDR)/%,$(HDRNAMS)) $(GO32)/api.h 
 GO32HDRS		+= $(GO32)/api32.h $(GO32)/hardware.h $(GO32)/pc.h
 L3HDR			:= $(HDR)/l3local.h

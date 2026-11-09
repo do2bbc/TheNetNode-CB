@@ -56,6 +56,7 @@
  */
 
 #include "tnn.h"
+#include "tcpkiss.h"
 
 typedef enum
 {
@@ -303,6 +304,7 @@ analyse_value(const char *str1, const char *str2)
           || ((tmp == KISS_6PACK) && (max_device != 0))
 #endif
           || (tmp < KISS_NORMAL)
+          || (tmp == KISS_TCP)
           || (tmp > KISS_MAX)
           || ((tmp == KISS_TOK) && (max_device != 0)))
         return (TRUE);

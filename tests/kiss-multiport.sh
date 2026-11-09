@@ -107,6 +107,10 @@ static void frame_to_l1(WORD port, char *b, int n) {
 }
 static void send_kisscmd(int, int, int);
 #include "l1attach.h"
+#include "tcpkiss.h"
+BOOLEAN tcpkiss_attach(void) { return FALSE; }
+BOOLEAN tcpkiss_detach(int port) { (void)port; return FALSE; }
+void tcpkiss_dump(MBHEAD *b, int port) { (void)b; (void)port; assert(0); }
 EOF
 sed '/^#include "tnn.h"/d' os/linux/l1attach.c >> "$tmp/test.c"
 extract os/linux/l1linux.c '^void send_kisscmd\('

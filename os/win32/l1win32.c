@@ -49,6 +49,7 @@
 /************************************************************************/
 
 #include "tnn.h"
+#include "tcpkiss.h"
 
 UWORD wd_timer[L2PNUM];          /* Wenn dieser Timer gegen 0 geht, wird  */
                                  /* der Port zurueckgesetzt.              */
@@ -594,6 +595,7 @@ void exit_kisslink(void)
   register WORD i;
   char buffer[] = { (char)FEND, (char)0xFF };
 
+  tcpkiss_exit();
   for (i = 0; i < L1PNUM; ++i)
    {
     /* abgeschaltete Ports */
@@ -769,6 +771,7 @@ void l1rxtx(void)
   register UBYTE i;
   DEVICE *l1pp;
 
+  tcpkiss_poll();
 #ifdef VANESSA
   if (found_vanessa != 0)
     vanessa();
@@ -802,6 +805,8 @@ void l1rxtx(void)
         if (!portenabled(i))
       continue;
     l1pp = &l1port[l1ptab[i]];
+    if (l1pp->kisstype == KISS_TCP)
+      continue;
     /* Tokenring darf nur senden, wenn wir das Token haben */
     if (   (l1pp->kisstype == KISS_TOK) /* Wenn Token noch unterwegs,   */
         && (tokenflag == FALSE))        /* nicht senden!                */
@@ -1087,6 +1092,8 @@ void send_kisscmd(int l2prt, int cmd, int value)
 
   switch (l1pp->kisstype)              /* pruefen, ob Kommando zum      */
   {                                    /* Kiss-Modus passt              */
+    case KISS_TCP:
+      return;
     case KISS_RMNC:
     case KISS_SCC:
       return;
@@ -1687,6 +1694,7 @@ WORD iscd(int l2port)
 
 void l1enum(MBHEAD *mbp)
 {
+  putstr("   * TCPKISS (Dire Wolf TCP client, channels 0..15)\r", mbp);
 #ifdef LOOPBACK
   putstr("   * KISS-Protocols: TOKENRING KISS SMACK RKISS TF LOOP\r", mbp);
 #else

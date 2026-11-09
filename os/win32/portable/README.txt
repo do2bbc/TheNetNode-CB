@@ -29,7 +29,7 @@ and an isolated LAN. Do not forward these ports through your router.
 PORTS
 -----
 The build contains the Windows implementations for:
-  KISS, SMACK, RMNC-KISS, token ring, TF (experimental), 6PACK,
+  KISS, TCP-KISS (Dire Wolf client), SMACK, RMNC-KISS, token ring, TF (experimental), 6PACK,
   AX25IP/AX25UDP, loopback, Telnet, HTTP, IP-Convers and IRC.
 Being compiled does NOT mean tested with the corresponding hardware.
 In particular 6PACK and serial hardware need tests on real Windows.
@@ -51,6 +51,28 @@ Serial KISS on COM1, 9600 baud:
   port 0
 Other serial types: SMACK=1, RMNC=2, token ring=3, TF=6, 6PACK=12.
 COM10 and above require the Windows device form \\.\COM10.
+
+Dire Wolf TCP-KISS (not a tnn.ini device group):
+Set KISSPORT 8001 in Dire Wolf. As sysop, or in TNN179.TNB before the
+corresponding PORT lines, use unused TNN ports:
+  ATTACH PORT=7 KTYP=TCPKISS DEVICE=127.0.0.1:8001 CHANNEL=0
+  ATTACH PORT=3 KTYP=TCPKISS DEVICE=127.0.0.1:8001 CHANNEL=1
+  PORT 7 NAME=DW0 ON MODE=1200
+  PORT 3 NAME=DW1 ON MODE=1200
+Adapt callsigns, ports and radio parameters before use. CHANNEL is the
+Dire Wolf channel (0..15, default 0); it must exist in Dire Wolf.
+An identical DEVICE shares one TCP connection. IPv4 hostnames/addresses
+and ports 1..65535 are accepted; hostnames are resolved at ATTACH.
+No SPEED parameter or numeric kisstype in tnn.ini.
+Connections retry every five seconds and resend standard KISS parameters.
+An incomplete frame is discarded on disconnect; AX.25 must retransmit it.
+DETACH removes one channel, closing TCP only after the final channel.
+Use SPARAM to save configuration. TCP-KISS has no encryption or
+authentication; keep the server on localhost or an isolated trusted LAN.
+No AGWPE, UDP-KISS, IPv6, hardware DCD/PTT feedback or proprietary DAMA
+commands are implemented. Use Dire Wolf calibration instead of TNN TEST.
+Transport and two-channel integration tests use Wine and Dire Wolf 1.6
+with ALSA null audio in Podman; not a new physical Windows/XP radio test.
 
 AX25IP/UDP:
   device AX25IP

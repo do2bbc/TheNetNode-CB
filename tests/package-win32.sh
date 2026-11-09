@@ -26,6 +26,7 @@ sh tests/win32-build.sh
 sh tests/gcc-regressions.sh
 sh tests/runtime-regressions.sh
 sh tests/convers-links.sh
+sh tests/tcpkiss.sh
 sh tests/startup-banner.sh
 sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
@@ -37,6 +38,9 @@ i686-w64-mingw32-gcc -DWIN32 -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 \
 mkdir "$tmp/diagnostics"
 cd "$tmp/diagnostics"
 export WINEPREFIX="$tmp/wine" WINEDEBUG=-all
+cd "$source"
+sh tests/tcpkiss.sh win32
+cd "$tmp/diagnostics"
 timeout 90 wine "$tmp/diagnostics-test.exe" clean
 grep -q 'event=CLEAN_EXIT' tnn-runtime.log
 timeout 20 wine "$tmp/diagnostics-test.exe" error

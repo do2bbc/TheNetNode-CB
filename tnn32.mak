@@ -159,6 +159,8 @@ tnn: $(TARGET)
 contrib: $(BIN)/help.exe $(BIN)/msg.exe $(BIN)/msy.exe $(BIN)/top.exe
 
 
+src/tcpkiss.o os/win32/init.o os/win32/l1attach.o os/win32/l1win32.o: include/tcpkiss.h
+
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
 	
@@ -217,6 +219,7 @@ INCLUDE= \
 
 SRC= \
 	src/buffer.c \
+	src/tcpkiss.c \
 	src/callstr.c \
 	src/cvs_cmds.c \
 	src/cvs_cvrt.c \

@@ -50,6 +50,7 @@ jobs:
           sh tests/gcc-regressions.sh
           sh tests/runtime-regressions.sh
           sh tests/convers-links.sh
+          sh tests/tcpkiss.sh
           sh tests/startup-banner.sh
           sh tests/socket-set.sh
           sh tests/monitor-hostmode.sh
