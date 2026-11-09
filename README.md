@@ -133,6 +133,11 @@ entsprechend anpassen.
 **Beim Update weder `make baseinstall` noch eine Neuinstallation ausfuehren.**
 Das obige Vorgehen erhaelt Rufzeichen, Passwoerter, Links und Portkonfiguration.
 
+Falls ein zuvor gespeicherter Convers-Link ein `^@` hinter dem Call enthaelt
+(zum Beispiel `CONV C cb0hk CB0HK^@`), nach dem Update als Sysop im Convers
+mit `/L - cb0hk` entfernen und mit `/L + cb0hk` neu eintragen.
+Anschliessend die Konfiguration an der Node-Konsole mit `SPARAM` speichern.
+
 ## 4. Onlinehilfe nachinstallieren
 
 Die Onlinehilfe ist ein separates Programm. Falls `HELP` keine Hilfe anzeigt,
@@ -159,6 +164,7 @@ Diese Regressionstests laufen offline und verbinden sich nicht mit anderen Nodes
 ```bash
 sh tests/gcc-regressions.sh
 sh tests/runtime-regressions.sh
+sh tests/convers-links.sh
 sh tests/startup-banner.sh
 sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh

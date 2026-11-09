@@ -1760,7 +1760,7 @@ PERMLINK *update_permlinks(char *name, CONNECTION *cp, WORD isperm)
 {
   DESTINATION *d;
   PERMLINK *p;
-  WORD pl;
+  WORD pl, i;
 #ifdef CONVERS_LINKS
   char NAME[NAMESIZE + 1];
 #endif
@@ -1823,7 +1823,10 @@ PERMLINK *update_permlinks(char *name, CONNECTION *cp, WORD isperm)
     p = (PERMLINK *) calloc(1, sizeof(PERMLINK));
     if (p) {
       strncpy(p->cname, name, NAMESIZE);
-      strcpy(p->call, name);
+      memset(p->call, ' ', L2CALEN);
+      for (i = 0; i < L2CALEN && name[i]; i++)
+        p->call[i] = (char)toupper((unsigned char)name[i]);
+      p->call[L2IDLEN - 1] = 0x60;
       p->connection = cp;
       p->statetime = currtime;
       p->waittime = 9;

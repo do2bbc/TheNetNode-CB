@@ -1306,7 +1306,10 @@ static BOOLEAN scan_linksarg(char *arg, char *hostname, WORD *act,
           /* Es ist kein IP-Link. */
           *ip = '\0';
           /* Es wuerde kein AX25-CALL gesetzt! */
-          cpyid(call, hostname);
+          memset(call, ' ', L2CALEN);
+          for (port = 0; port < L2CALEN && hostname[port]; port++)
+            call[port] = (char)toupper((unsigned char)hostname[port]);
+          call[L2IDLEN - 1] = 0x60;
           /* hostname: Call ohne SSID */
           callss2str(hostname, call);
 
