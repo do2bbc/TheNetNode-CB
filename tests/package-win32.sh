@@ -25,6 +25,7 @@ make -f tnn32.mak all PREFIX=i686-w64-mingw32- -j2
 sh tests/win32-build.sh
 sh tests/gcc-regressions.sh
 sh tests/runtime-regressions.sh
+sh tests/convers-links.sh
 sh tests/startup-banner.sh
 sh tests/socket-set.sh
 sh tests/monitor-hostmode.sh
