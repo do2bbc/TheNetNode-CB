@@ -39,6 +39,7 @@ typedef enum { ERRORS = -1, NO, YES } TRILLIAN;
 #define L1IPCONV
 #define CONVERS_HOSTNAME
 #define CONVERS_LINKS
+#define CALLCHECK
 #define NULLPERMLINK NULL
 #define min(a, b) ((a) < (b) ? (a) : (b))
 typedef struct { int unused; } CONNECTION;
@@ -76,9 +77,6 @@ static void cpyid(char *dest, const char *src) {
 static int cmpcal(const char *a, const char *b) {
   return !strncmp(a, b, L2CALEN);
 }
-static TRILLIAN fvalca(char *call) {
-  return call[0] == ' ' ? NO : YES;
-}
 static void getdig(WORD *n, char **p, int flag, char *via) {
   (void)n; (void)p; (void)flag; *via = NUL;
 }
@@ -112,6 +110,10 @@ extract src/l7utils.c '^BOOLEAN skipsp\('
 extract src/callstr.c '^callss2str\('
 # callss2str and getcal have their return types on the preceding line.
 sed -i '/^callss2str(/i void' "$tmp/test.c"
+extract src/l7utils.c '^valcal\('
+sed -i '/^valcal(/i TRILLIAN' "$tmp/test.c"
+extract src/l7utils.c '^fvalca\('
+sed -i '/^fvalca(/i TRILLIAN' "$tmp/test.c"
 extract src/l7utils.c '^getcal\('
 sed -i '/^getcal(/i TRILLIAN' "$tmp/test.c"
 extract src/l7utils.c '^UWORD nxtnum\('
@@ -179,7 +181,7 @@ int main(void) {
   puts("Convers link parsing and saved configuration regressions passed");
 }
 EOF
-${CC:-cc} -std=gnu99 -Wall -Wextra -Werror -Wno-unused-parameter \
+${CC:-cc} -std=gnu99 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-but-set-variable \
   -funsigned-char -fsanitize=address,undefined -fno-omit-frame-pointer -g \
   "$tmp/test.c" -o "$tmp/test"
 "$tmp/test"
