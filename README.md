@@ -221,6 +221,12 @@ einen anderen Hostnamen verwendet, diesen und das Ziel getrennt angeben,
 zum Beispiel `/L + hostname DIG343-5`. Mit `SPARAM` speichern. Ein frueher
 falsch ohne SSID gespeicherter Eintrag muss neu eingetragen werden.
 
+Das GO32-DOS-Testpaket enthaelt eine DJGPP-Binaerdatei und CWSDPMI.
+Der Start wurde in DOSBox getestet, nicht auf echter DOS- oder
+Funkhardware. AXIP, natives TCP-KISS, HTTPD und IP-Convers sind dort nicht
+verfuegbar. Einrichtung und Hinweise zu Standardpasswoertern stehen in der
+README.TXT des Pakets.
+
 ## 4. Onlinehilfe nachinstallieren
 
 Die Onlinehilfe ist ein separates Programm. Falls `HELP` keine Hilfe anzeigt,

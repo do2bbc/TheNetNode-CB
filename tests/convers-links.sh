@@ -35,7 +35,9 @@ typedef enum { ERRORS = -1, NO, YES } TRILLIAN;
 #define L2PNUM 16
 #define MAXCVSHOST 10
 #define NAMESIZE 16
+#ifndef TEST_GO32
 #define OS_IPLINK
+#endif
 #define L1IPCONV
 #define CONVERS_HOSTNAME
 #define CONVERS_LINKS
@@ -126,6 +128,16 @@ extract src/l7utils.c '^void putid\('
 extract src/l7utils.c '^void dump_convc\('
 cat >> "$tmp/test.c" <<'EOF'
 int main(void) {
+#ifdef TEST_GO32
+  char input[] = "+ dig343-5", hostname[17] = {0}, call[L2IDLEN], via[57];
+  WORD act = 0, port = 0;
+  assert(scan_linksarg(input, hostname, &act, call, via, &port));
+  assert(!strcmp(hostname, "dig343") && !memcmp(call, "DIG343\152", L2IDLEN));
+  assert(port == 255 && !via[0]);
+  char invalid[] = "+ dig343-16";
+  assert(!scan_linksarg(invalid, hostname, &act, call, via, &port));
+  puts("Convers GO32 SSID parsing passed");
+#else
   char input[] = "+ cb0hk", hostname[17] = {0}, call[L2IDLEN], via[57];
   unsigned char ip[65] = {0};
   WORD act = 0, port = 0;
@@ -179,9 +191,15 @@ int main(void) {
   assert(act == 1 && !strcmp(hostname, "dig343"));
   free(first); free(second); free(with_ssid);
   puts("Convers link parsing and saved configuration regressions passed");
+#endif
 }
 EOF
 ${CC:-cc} -std=gnu99 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-but-set-variable \
   -funsigned-char -fsanitize=address,undefined -fno-omit-frame-pointer -g \
   "$tmp/test.c" -o "$tmp/test"
+"$tmp/test"
+${CC:-cc} -std=gnu99 -Wall -Wextra -Werror -Wno-unused-parameter \
+  -Wno-unused-but-set-variable -Wno-unused-function -Wno-unused-variable \
+  -funsigned-char -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+  -DTEST_GO32 "$tmp/test.c" -o "$tmp/test"
 "$tmp/test"

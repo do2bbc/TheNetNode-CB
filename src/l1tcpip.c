@@ -1789,13 +1789,17 @@ T_INTERFACE *SetInterface(UWORD Interface)
       ifpp = &ifp[TEL_ID];
      break;
 
+#ifdef L1HTTPD
     case KISS_HTTPD :
       ifpp = &ifp[HTP_ID];
      break;
+#endif
 
+#ifdef L1IPCONV
     case KISS_IPCONV :
       ifpp = &ifp[CVS_ID];
      break;
+#endif
 
     default :
      break;

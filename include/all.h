@@ -139,6 +139,8 @@
 #ifdef __GO32__
 #undef OS_STACK
 #undef OS_IPLINK
+#undef L1HTTPD
+#undef L1IPCONV
 #undef SPEECH
 #endif /* __GO32__ */
 

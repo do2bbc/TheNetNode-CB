@@ -70,13 +70,17 @@ void ReadEnvcomTCP(char *what, int *Interface)
       *Interface = KISS_TELNET;
      break;
 
+#ifdef L1HTTPD
     case  KISS_HTTPD:
       *Interface = KISS_HTTPD;
      break;
+#endif
 
+#ifdef L1IPCONV
     case  KISS_IPCONV:
       *Interface = KISS_IPCONV;
      break;
+#endif
 
     /* Ungueltiges Interface. */
     default :

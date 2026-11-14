@@ -76,6 +76,7 @@ struct tm *zeit;
 /**************************************************************************/
 /* vsnprintf fuer DOSe DG8BR                                              */
 /*------------------------------------------------------------------------*/
+#if !defined(__DJGPP_MINOR__) || __DJGPP_MINOR__ < 5
 int vsnprintf(char *str, int NOTIFYVSNPFBUFF, const char *format, va_list arg_ptr)
 {
   char str2[4096];
@@ -90,6 +91,7 @@ int vsnprintf(char *str, int NOTIFYVSNPFBUFF, const char *format, va_list arg_pt
   strncpy(str, str2, NOTIFYVSNPFBUFF);
   return(n);
 }
+#endif
 
 /**************************************************************************/
 /*                                                                        */
