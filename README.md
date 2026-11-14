@@ -64,9 +64,9 @@ Mit dem selbst gesetzten Konsolenpasswort anmelden, dann `Esc`, `c` und
 `Enter` fuer die erste Node-Konsole eingeben. Fehler beim Einlesen der
 Startkommandos stehen in `/usr/local/tnn/startup.log`.
 
-Die Installation richtet keinen systemd-Dienst automatisch ein. Fuer einen
-ersten Test reicht der Konsolenstart; ein vorhandener Dienst kann weiterhin
-verwendet werden.
+Die Debian-Paketierung liefert den optionalen Dienst `tnn-cb.service`, aktiviert
+oder startet ihn bei der Installation aber nicht. Fuer einen ersten Test reicht
+der Konsolenstart; ein vorhandener Dienst kann weiterhin verwendet werden.
 
 ### TNC3S: zwei Funkports ueber eine serielle KISS-Verbindung (Linux)
 

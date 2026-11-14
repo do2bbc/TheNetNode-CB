@@ -28,7 +28,8 @@ package="$tmp/package"
 doc="$package/usr/share/doc/tnn-cb"
 mkdir -p "$package/DEBIAN" "$package/usr/bin" "$doc/examples" \
   "$package/usr/lib/tnn-cb/userexe" "$package/usr/lib/tnn-cb/sysexe" \
-  "$package/usr/share/tnn-cb"
+  "$package/usr/share/tnn-cb" "$package/usr/lib/systemd/system" \
+  "$package/usr/lib/sysusers.d"
 git archive --format=tar HEAD | gzip -n > "$doc/SOURCE.tar.gz"
 cd "$source"
 make -j2 tnn help msg msy top CC="$compiler" HOSTCC=gcc \
@@ -62,6 +63,10 @@ cp packaging/debian/tnn.ini packaging/debian/tnn179.pas \
 cp packaging/debian/README.Debian "$doc/"
 cp alas.txt "$doc/copyright"
 cp doc/tnn178.pdf doc/tnn179cb.pdf "$doc/"
+install -m 644 packaging/debian/tnn-cb.service \
+  "$package/usr/lib/systemd/system/tnn-cb.service"
+install -m 644 packaging/debian/tnn-cb.sysusers \
+  "$package/usr/lib/sysusers.d/tnn-cb.conf"
 cp contrib/onlhelp/ohu.txt contrib/onlhelp/ohs.txt \
   contrib/msgmsy/msg.usr contrib/msgmsy/msg.sys contrib/top/config.top \
   "$package/usr/share/tnn-cb/"
@@ -79,8 +84,11 @@ Installed-Size: $(du -sk "$package/usr" | cut -f1)
 Homepage: https://github.com/do2bbc/TheNetNode-CB
 Description: TheNetNode CB packet-radio node and helper programs
  Native CB source tree with offline example configuration.
- No service or live configuration is installed or started automatically.
+ The optional systemd service is not enabled or started automatically.
 EOF
+install -m 755 packaging/debian/postinst "$package/DEBIAN/postinst"
+install -m 755 packaging/debian/prerm "$package/DEBIAN/prerm"
+install -m 755 packaging/debian/postrm "$package/DEBIAN/postrm"
 cd "$package"
 find usr -type f -print0 | LC_ALL=C sort -z | xargs -0 md5sum > DEBIAN/md5sums
 archive="tnn-cb_${debversion}_${arch}.deb"

@@ -14,8 +14,9 @@ with QEMU, not certified on every Pi model or radio interface.
 Install:
   sudo apt install ./tnn-cb_*.deb
 
-The package installs /usr/bin/tnn-cb and helpers under /usr/lib/tnn-cb.
-It does NOT install a service, start a node, open network ports, replace
+The package installs /usr/bin/tnn-cb, helpers under /usr/lib/tnn-cb and the
+optional tnn-cb.service. On systemd systems it creates a locked _tnn-cb system
+account, but does NOT enable or start the service, open network ports, replace
 /usr/local/tnn/tnn, or write to existing node configurations or saved state.
 The Windows-only tnn-runtime.log/tnn-crash.log feature is not included.
 
@@ -37,6 +38,22 @@ BOTH passwords in tnn179.pas. Never use these public example passwords online.
 No radio, peers, or network listeners are enabled by the template.
 First-run missing statistics warnings are expected.
 
+Optional systemd service:
+  sudo install -d -o _tnn-cb -g _tnn-cb -m 0750 /var/lib/tnn-cb
+  sudo -u _tnn-cb cp -R /usr/share/doc/tnn-cb/examples/. /var/lib/tnn-cb/
+  sudo -u _tnn-cb mkdir -p /var/lib/tnn-cb/{textcmd,pacsat,httpd,speech,msg}
+  sudo -u _tnn-cb cp -n /usr/share/tnn-cb/ohu.txt /usr/share/tnn-cb/ohs.txt /var/lib/tnn-cb/
+  sudo -u _tnn-cb cp -n /usr/share/tnn-cb/msg.usr /usr/share/tnn-cb/msg.sys /var/lib/tnn-cb/msg/
+  sudo -u _tnn-cb cp -n /usr/share/tnn-cb/config.top /var/lib/tnn-cb/
+
+Before starting the service, configure /var/lib/tnn-cb/tnn.ini and
+tnn179.pas and replace all example callsigns and passwords. The example has no
+radio interfaces enabled. The service runs as _tnn-cb, with access to dialout
+devices and the network capabilities needed by TNN's packet-radio interfaces.
+After configuration, explicitly enable and start it:
+  sudo systemctl enable --now tnn-cb.service
+  sudo systemctl status tnn-cb.service --no-pager
+
 Existing node:
 Back up the run directory and stop TNN cleanly first. Change your own launch
 command/service to /usr/bin/tnn-cb, keeping its existing working directory,
@@ -44,7 +61,8 @@ arguments and configuration. Helpers stay at /usr/lib/tnn-cb/userexe and
 /usr/lib/tnn-cb/sysexe; adapt your existing tnn179.pas deliberately if needed.
 Do NOT copy examples over a running node or run "make baseinstall".
 apt package updates do NOT restart a node: stop/start it yourself to use the
-new binary. Removal leaves your own run directory untouched.
+new binary. Package removal stops and disables tnn-cb.service but leaves the
+_tnn-cb account and /var/lib/tnn-cb data intact.
 
 BUILD.txt records the exact source commit. SOURCE.tar.gz contains the matching
 complete sources including build/packaging scripts; copyright contains ALAS.

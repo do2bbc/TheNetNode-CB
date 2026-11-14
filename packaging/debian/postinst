@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        if command -v systemd-sysusers >/dev/null 2>&1; then
+            if [ -n "${DPKG_ROOT:-}" ]; then
+                systemd-sysusers --root="$DPKG_ROOT"
+            else
+                systemd-sysusers
+            fi
+        else
+            printf '%s\n' \
+                'tnn-cb: systemd-sysusers is unavailable; the optional service account was not created.' >&2
+        fi
+        if [ -z "${DPKG_ROOT:-}" ] && [ -d /run/systemd/system ]; then
+            systemctl daemon-reload
+        fi
+        ;;
+esac
+
+exit 0

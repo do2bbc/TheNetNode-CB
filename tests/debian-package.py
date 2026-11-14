@@ -22,12 +22,31 @@ def main(package, arch):
         subprocess.run(["dpkg-deb", "-e", package, root / "control"], check=True)
         subprocess.run(["md5sum", "-c", root / "control/md5sums"],
                        cwd=extracted, check=True, stdout=subprocess.DEVNULL)
-        assert not any((root / "control" / name).exists()
-                       for name in ("preinst", "postinst", "prerm", "postrm"))
+        control = root / "control"
+        assert not (control / "preinst").exists()
+        for name in ("postinst", "prerm", "postrm"):
+            assert (control / name).is_file()
+        maintainer_scripts = "\n".join(
+            (control / name).read_text()
+            for name in ("postinst", "prerm", "postrm"))
+        assert "systemctl enable" not in maintainer_scripts
+        assert "systemctl start" not in maintainer_scripts
         assert not (extracted / "etc").exists()
         assert not (extracted / "var").exists()
         assert not (extracted / "usr/local").exists()
-        assert not list(extracted.rglob("*.service"))
+        service = extracted / "usr/lib/systemd/system/tnn-cb.service"
+        assert service.is_file()
+        service_text = service.read_text()
+        for setting in (
+            "User=_tnn-cb",
+            "Group=_tnn-cb",
+            "WorkingDirectory=/var/lib/tnn-cb",
+            "StateDirectory=tnn-cb",
+            "ExecStart=/usr/bin/tnn-cb",
+            "AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW",
+        ):
+            assert setting in service_text
+        assert (extracted / "usr/lib/sysusers.d/tnn-cb.conf").is_file()
         doc = extracted / "usr/share/doc/tnn-cb"
         assert "Source commit:" in (doc / "BUILD.txt").read_text()
         run = root / "run"
@@ -108,12 +127,26 @@ def main(package, arch):
                 ("--purge", "tnn-cb"),
             ]:
                 subprocess.run([
-                    "dpkg", f"--root={install_root}", "--force-architecture",
+                    "dpkg", f"--root={install_root}",
+                    "--force-script-chrootless", "--force-architecture",
                     "--force-depends", action, target,
                 ], check=True, stdout=subprocess.DEVNULL)
                 for sentinel in sentinels:
                     assert sentinel.read_text() == "existing configuration must survive\n"
                 assert (install_root / "usr/bin/tnn-cb").exists() == (action == "--install")
+                assert not (
+                    install_root / "etc/systemd/system/multi-user.target.wants"
+                    / "tnn-cb.service"
+                ).exists()
+            passwd_file = install_root / "etc/passwd"
+            if shutil.which("systemd-sysusers"):
+                passwd = passwd_file.read_text()
+                assert re.search(
+                    r"^_tnn-cb:[^:]*:[0-9]+:[0-9]+:TheNetNode-CB system service:"
+                    r"/var/lib/tnn-cb:/usr/sbin/nologin$",
+                    passwd,
+                    re.MULTILINE,
+                )
             print(f"{arch}: isolated install/reinstall/remove/purge preserved existing configuration")
         print(f"{arch}: package checksums, offline startup, login and clean exit passed")
 

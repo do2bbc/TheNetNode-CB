@@ -1,0 +1,20 @@
+[Unit]
+Description=TheNetNode-CB packet-radio node
+After=network.target
+
+[Service]
+Type=simple
+User=_tnn-cb
+Group=_tnn-cb
+SupplementaryGroups=dialout
+WorkingDirectory=/var/lib/tnn-cb
+StateDirectory=tnn-cb
+StateDirectoryMode=0750
+ExecStart=/usr/bin/tnn-cb
+Restart=on-failure
+RestartSec=5s
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target
