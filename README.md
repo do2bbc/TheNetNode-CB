@@ -68,6 +68,31 @@ Die Debian-Paketierung liefert den optionalen Dienst `tnn-cb.service`, aktiviert
 oder startet ihn bei der Installation aber nicht. Fuer einen ersten Test reicht
 der Konsolenstart; ein vorhandener Dienst kann weiterhin verwendet werden.
 
+### AXIP ueber UDP mit IPv4 und IPv6 (Linux)
+
+Ein AXIP-Port empfaengt IPv4 und IPv6 gleichzeitig auf demselben UDP-Port.
+Beispiel fuer `tnn179.tnb`:
+
+```text
+ATTACH PORT=12 KTYP=AX25IP DEVICE=10093
+PORT 12 NAME=AXIP ON
+AXIPR U 10093
+AXIPR R + DB0XYZ 2001:db8::1 U 10093
+```
+
+Portnummern, Rufzeichen und Zieladresse anpassen. IPv4-Adressen und Hostnamen
+funktionieren weiterhin; liefert ein Hostname beide Familien, wird IPv4
+bevorzugt. Fuer Link-Local-Adressen muss gegebenenfalls das Interface mit
+angegeben werden, zum Beispiel `fe80::1%eth0`. `AXIPR` zeigt die Routen,
+`SPARAM` speichert feste Routen. Ohne IPv6-Unterstuetzung des Betriebssystems
+faellt der UDP-Socket auf IPv4 zurueck. Raw-AXIP (IP-Protokoll 93 ohne UDP)
+bleibt IPv4-only; TCP-KISS ist hiervon nicht betroffen.
+
+Fuer eingehende Verbindungen die UDP-Firewall fuer beide verwendeten
+Adressfamilien passend konfigurieren. IPv4 benoetigt hinter NAT gegebenenfalls
+eine Portweiterleitung; IPv6 hat eine eigene Firewall und benoetigt eine
+erreichbare IPv6-Adresse. AXIP ist nicht verschluesselt oder authentifiziert.
+
 ### TNC3S: zwei Funkports ueber eine serielle KISS-Verbindung (Linux)
 
 In `tnn179.tnb` vor den zugehoerigen `PORT`-Kommandos:

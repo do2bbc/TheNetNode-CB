@@ -108,6 +108,9 @@ static BOOLEAN new_parser = FALSE;      /* Standardmaessig alte Syntax */
 struct route_table_entry {
    unsigned char callsign[L2IDLEN];     /* the callsign and ssid */
    unsigned long ip_addr;               /* the IP address */
+   struct in6_addr ipv6_addr;
+   unsigned int ipv6_scope_id;
+   int address_family;
    unsigned short udp_port;             /* the port number if udp */
    unsigned int timeout;                /* Timeout der Route */
    unsigned char hostname[HNLEN];
@@ -134,9 +137,9 @@ void               ax25ip_recv(void);
 void               ax25ip_check_up(void);
 void               ax25ip_check_down(void);
 #ifndef AXIPR_UDP
-static void        route_add(unsigned char*, struct hostent*, unsigned char*, int, int, int);
+static void        route_add(unsigned char*, const struct sockaddr_storage*, unsigned char*, int, int, int);
 #else
-static BOOLEAN     route_add(unsigned char*, struct hostent*, unsigned char*, int, int, int
+static BOOLEAN     route_add(unsigned char*, const struct sockaddr_storage*, unsigned char*, int, int, int
                             , char *
 #ifdef AXIPR_HTML
                             , char *, UWORD
@@ -165,7 +168,7 @@ unsigned char     *next_addr(unsigned char*);
 void               write_log(const char*, ...);
 
 #ifdef AXIPR_UDP
-void           route_analyse(struct in_addr, unsigned char *, int);
+void           route_analyse(const struct sockaddr_storage *, unsigned char *, int);
 void           route_check(register int);
 struct route_table_entry *search_route(unsigned char *);
 void           UpdateRoute(unsigned char *, int, int, char *

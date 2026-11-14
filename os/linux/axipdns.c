@@ -11,7 +11,7 @@
 struct axip_dns_entry
 {
   char hostname[AXIP_DNS_HOSTNAME_LENGTH];
-  struct in_addr address;
+  struct sockaddr_storage address;
   int resolved;
   int ready;
 };
@@ -47,22 +47,48 @@ static void axip_dns_unlock(void)
   }
 }
 
-static void *axip_dns_resolve_batch(void *unused)
+int axip_dns_resolve(const char *hostname, struct sockaddr_storage *result)
 {
   struct addrinfo hints;
-  struct addrinfo *addresses;
+  struct addrinfo *addresses = NULL;
   struct addrinfo *address;
-  struct sockaddr_in *ipv4;
+  struct addrinfo *chosen = NULL;
+  int error;
+
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  error = getaddrinfo(hostname, NULL, &hints, &addresses);
+  if (error != 0)
+    return error;
+
+  for (address = addresses; address != NULL; address = address->ai_next)
+  {
+    if (address->ai_family == AF_INET
+        && address->ai_addrlen == sizeof(struct sockaddr_in))
+    {
+      chosen = address;
+      break;
+    }
+    if (chosen == NULL && address->ai_family == AF_INET6
+        && address->ai_addrlen == sizeof(struct sockaddr_in6))
+      chosen = address;
+  }
+  memset(result, 0, sizeof(*result));
+  if (chosen != NULL)
+    memcpy(result, chosen->ai_addr, chosen->ai_addrlen);
+  freeaddrinfo(addresses);
+  return chosen != NULL ? 0 : EAI_NONAME;
+}
+
+static void *axip_dns_resolve_batch(void *unused)
+{
   char hostname[AXIP_DNS_HOSTNAME_LENGTH];
-  struct in_addr resolved_address;
+  struct sockaddr_storage resolved_address;
   size_t i;
   int resolved;
 
   (void)unused;
-
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_DGRAM;
 
   for (i = 0; ; ++i)
   {
@@ -76,27 +102,8 @@ static void *axip_dns_resolve_batch(void *unused)
     memcpy(hostname, axip_dns_entries[i].hostname, sizeof(hostname));
     axip_dns_unlock();
 
-    addresses = NULL;
     memset(&resolved_address, 0, sizeof(resolved_address));
-    resolved = getaddrinfo(hostname, NULL, &hints, &addresses) == 0
-      && addresses != NULL;
-
-    if (resolved)
-    {
-      resolved = 0;
-      for (address = addresses; address != NULL; address = address->ai_next)
-      {
-        if (address->ai_family == AF_INET
-            && address->ai_addrlen >= sizeof(struct sockaddr_in))
-        {
-          ipv4 = (struct sockaddr_in *)address->ai_addr;
-          resolved_address = ipv4->sin_addr;
-          resolved = 1;
-          break;
-        }
-      }
-      freeaddrinfo(addresses);
-    }
+    resolved = axip_dns_resolve(hostname, &resolved_address) == 0;
 
     axip_dns_lock();
     axip_dns_entries[i].address = resolved_address;

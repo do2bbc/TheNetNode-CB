@@ -74,6 +74,31 @@ static size_t axip_dns_target_count;
 static UWORD last_names_update_tic;
 static BOOLEAN names_update_seen = FALSE;
 static BOOLEAN names_update_busy_warned = FALSE;
+static int udp_socket_family = AF_INET;
+
+static void axip_set_socket_address(struct route_table_entry *route,
+                                    const struct sockaddr_storage *source)
+{
+  if (source == NULL)
+  {
+    route->address_family = AF_UNSPEC;
+    route->ip_addr = 0;
+    return;
+  }
+  if (source->ss_family == AF_INET)
+  {
+    const struct sockaddr_in *address = (const struct sockaddr_in *)source;
+    memcpy(&route->ip_addr, &address->sin_addr, sizeof(address->sin_addr));
+    route->address_family = AF_INET;
+  }
+  else if (source->ss_family == AF_INET6)
+  {
+    const struct sockaddr_in6 *address = (const struct sockaddr_in6 *)source;
+    route->ipv6_addr = address->sin6_addr;
+    route->ipv6_scope_id = address->sin6_scope_id;
+    route->address_family = AF_INET6;
+  }
+}
 
 static void axip_dns_apply_result(const struct axip_dns_result *result)
 {
@@ -109,13 +134,27 @@ static void axip_dns_apply_result(const struct axip_dns_result *result)
   if (route == NULL)
     return;
 
-  if (result->resolved
-      && memcmp(&route->ip_addr, &result->address.s_addr,
-                sizeof(result->address.s_addr)) != 0)
+  if (result->resolved && result->address.ss_family == AF_INET)
   {
-    memcpy(&route->ip_addr, &result->address.s_addr,
-           sizeof(result->address.s_addr));
-    LOGL1("IP-adress for %s changed !", target->hostname);
+    const struct sockaddr_in *address = (const struct sockaddr_in *)&result->address;
+    if (route->address_family != AF_INET
+        || memcmp(&route->ip_addr, &address->sin_addr, sizeof(address->sin_addr)) != 0)
+    {
+      axip_set_socket_address(route, &result->address);
+      LOGL1("IP-adress for %s changed !", target->hostname);
+    }
+  }
+  else if (result->resolved && result->address.ss_family == AF_INET6
+           && route->udp_port != 0)
+  {
+    const struct sockaddr_in6 *address = (const struct sockaddr_in6 *)&result->address;
+    if (route->address_family != AF_INET6
+        || memcmp(&route->ipv6_addr, &address->sin6_addr, sizeof(address->sin6_addr)) != 0
+        || route->ipv6_scope_id != address->sin6_scope_id)
+    {
+      axip_set_socket_address(route, &result->address);
+      LOGL1("IP-adress for %s changed !", target->hostname);
+    }
   }
 
 #ifdef AXIPR_UDP
@@ -267,16 +306,31 @@ void show_rt_entry(struct route_table_entry rp, MBHEAD *bufpoi)
   putspa(11, bufpoi);
 
   /* IP-Adresse ausgeben */
-  show_ip_addr(ntohl(rp.ip_addr), bufpoi);
+  if (rp.address_family == AF_INET6)
+  {
+    char address[HNLEN];
+    struct sockaddr_in6 socket_address;
+    memset(&socket_address, 0, sizeof(socket_address));
+    socket_address.sin6_family = AF_INET6;
+    socket_address.sin6_addr = rp.ipv6_addr;
+    socket_address.sin6_scope_id = rp.ipv6_scope_id;
+    if (getnameinfo((struct sockaddr *)&socket_address, sizeof(socket_address),
+                    address, sizeof(address), NULL, 0, NI_NUMERICHOST) == 0)
+      putstr(address, bufpoi);
+    else
+      putstr("<invalid IPv6>", bufpoi);
+  }
+  else
+    show_ip_addr(ntohl(rp.ip_addr), bufpoi);
 
-  putspa(29, bufpoi);
+  putspa(51, bufpoi);
 
   /* UDP-Port ausgeben wenn UDP-Port gesetzt */
   if (rp.udp_port != 0)
   {
     /* Eine UDP-Route */
     putstr("UDP", bufpoi);
-    putspa(35, bufpoi);
+    putspa(57, bufpoi);
     putnum(ntohs(rp.udp_port), bufpoi);
   }
   else
@@ -295,13 +349,13 @@ void show_rt_entry(struct route_table_entry rp, MBHEAD *bufpoi)
     d /= 60L;
     h = d % 24L;
 
-    putspa(40, bufpoi);
+    putspa(64, bufpoi);
     putprintf(bufpoi, " %02lu:%02lu:%02lu", h, m, s); /* hh:mm:ss */
   }
 
   if (rp.hostname[0] != 0)
   {
-    putspa(50, bufpoi);
+    putspa(75, bufpoi);
     putprintf(bufpoi, "%s", rp.hostname);
   }
 
@@ -432,11 +486,12 @@ BOOLEAN route_del(unsigned char *call)
     /*          die Eintraege haengen einfach hintereinander. Deshalb alle */
     /*          Eintraege oberhalb des gefundenen Eintrages einen nach     */
     /*          unten kopieren und den "table-top" einen herabsetzen.      */
-      for (j = i; j < route_tbl_top; ++j)
+      for (j = i; j + 1 < route_tbl_top; ++j)
         route_tbl[j] = route_tbl[j + 1];
 
       /* Ein Tabelleneintrag weniger */
       route_tbl_top--;
+      memset(&route_tbl[route_tbl_top], 0, sizeof(route_tbl[route_tbl_top]));
 
       /* Pruefen, ob Sockets noch notwendig */
       ax25ip_check_down();
@@ -462,7 +517,8 @@ ccpaxipr(void)
   int             new_udp = 0;
   unsigned char   call[L2IDLEN];
   char            hostname[HNLEN + 1];
-  struct          hostent *host;
+  struct sockaddr_storage resolved_address;
+  const struct sockaddr_storage *host = NULL;
   int             uNewTimeout;
 #ifdef AXIPR_UDP
   int             NewLogLevel = FALSE;
@@ -861,7 +917,7 @@ ccpaxipr(void)
       }
 
       /* eventuellen Hostnamen aufloesen */
-      if ((host = gethostbyname(hostname)) == NULL)
+      if (axip_dns_resolve(hostname, &resolved_address) != 0)
       {
         mbp = getmbp();
         putprintf(mbp, "Warning: can't resolve IP for host %s ! I keep trying ...\r", hostname);
@@ -869,9 +925,7 @@ ccpaxipr(void)
         seteom(mbp);
       }
       else
-      {
-        strncpy(hostname, host->h_name, sizeof(hostname));
-      }
+        host = &resolved_address;
     } /* if (uCmd != OP_DEL) */
 
     /* Optionale UDP-Parameter lesen */
@@ -1059,11 +1113,12 @@ ccpaxipr(void)
             }
 
             /* Hostname / IP-Adresse aufloesen */
-            if ((host = gethostbyname(hostname)) == NULL)
+            if (axip_dns_resolve(hostname, &resolved_address) != 0)
             {
               putmsg(inv_ip);
               return;
             }
+            host = &resolved_address;
 
             /* Mode-Parameter vorhanden ? */
             if (skipsp(&clicnt, &clipoi))
@@ -1176,11 +1231,12 @@ ccpaxipr(void)
             }
 
             /* aufloesen */
-            if ((host = gethostbyname(hostname)) == NULL)
+            if (axip_dns_resolve(hostname, &resolved_address) != 0)
             {
               putmsg(inv_ip);
               return;
             }
+            host = &resolved_address;
 
             /* Modus-Kennzeichner lesen falls vorhanden */
             if (skipsp(&clicnt, &clipoi))
@@ -1447,7 +1503,7 @@ ccpaxipr(void)
   }
   }
 
-  mbp = putals("AXIP-Routes:\rCall-------IP----------------Mode--Port--Timeout--IP/Hostname----\r");
+  mbp = putals("AXIP-Routes:\rCall-------IP--------------------------------------Mode--Port---Timeout----IP/Hostname----\r");
 
   /* Alle Routingtabelleneintraege durchgehen und ausgeben */
   for (i = 0; i < route_tbl_top; ++i)
@@ -1518,20 +1574,26 @@ void dump_ax25ip(MBHEAD* mbp)
     /* Timeout fuer dynamische Routen ausgeben */
     putprintf(mbp, "AXIPR TIMEOUT %u\r", uDynTimeout);
     /* Intervall fuer Hostnamen-Update ausgeben */
-    putprintf(mbp, "AXIPR LOOKUP %u\r", uNamesUpdate);
+    putprintf(mbp, "AXIPR LOOKUP %u\r", uNamesUpdate / 100);
   }
 
 #ifdef AXIPR_UDP
-  /* eigenen UDP-Port ausgeben */
-  putprintf(mbp, "AXIPR U %u\r", ntohs(my_udp));
-  /* Timeout fuer dynamische Routen ausgeben */
-  putprintf(mbp, "AXIPR T %u\r", uDynTimeout);
-
-  putprintf(mbp, "AXIPR L %d\r",loglevel);
-
+  if (new_parser == FALSE)
+  {
+    putprintf(mbp, "AXIPR U %u\r", ntohs(my_udp));
+    putprintf(mbp, "AXIPR T %u\r", uDynTimeout);
+    putprintf(mbp, "AXIPR L %d\r", loglevel);
 #ifdef AXIPR_HTML
-  putprintf(mbp, "AXIPR H %d\r",HtmlStat);
+    putprintf(mbp, "AXIPR H %d\r", HtmlStat);
 #endif /* AXIPR_HTML */
+  }
+  else
+  {
+    putprintf(mbp, "AXIPR LOGLEVEL %d\r", loglevel);
+#ifdef AXIPR_HTML
+    putprintf(mbp, "AXIPR HTMLSTAT %d\r", HtmlStat);
+#endif /* AXIPR_HTML */
+  }
 #endif /* AXIPR_UDP */
 
   /* alle Routingtabelleneintraege durchgehen und ausgeben */
@@ -1677,6 +1739,9 @@ int setup_udp(unsigned short udp_port)
 {
   /* Temporaerer Filedescriptor */
   int tmp_fd = -1;
+  int family = AF_INET6;
+  int v6only = 0;
+  struct sockaddr_in6 udpbind6;
 
   /* Port-Check */
   if (udp_port == 0)
@@ -1685,12 +1750,27 @@ int setup_udp(unsigned short udp_port)
   /* Adressstruktur loeschen */
   memset((char*)&udpbind, 0, sizeof(udpbind));
 
-  /* UDP-Socket anlegen */
-  if ((tmp_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  /* Ein Dual-Stack-Socket nimmt IPv4 und IPv6 auf demselben Port an. */
+  tmp_fd = socket(AF_INET6, SOCK_DGRAM, 0);
+  if (tmp_fd < 0 && (errno == EAFNOSUPPORT || errno == EPROTONOSUPPORT))
+  {
+    xprintf("AX25IP: IPv6 unavailable, using IPv4 UDP only\n");
+    family = AF_INET;
+    tmp_fd = socket(AF_INET, SOCK_DGRAM, 0);
+  }
+  if (tmp_fd < 0)
   {
     xprintf("AX25IP : cannot create socket: %s\n", strerror(errno));
     LOGL2("AX25IP : cannot create socket: %s\n", strerror(errno));
     return(-1);
+  }
+
+  if (family == AF_INET6
+      && setsockopt(tmp_fd, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) < 0)
+  {
+    xprintf("AX25IP: cannot enable dual-stack UDP: %s\n", strerror(errno));
+    close(tmp_fd);
+    return -1;
   }
 
   /* Nonblocking-IO */
@@ -1707,8 +1787,15 @@ int setup_udp(unsigned short udp_port)
   udpbind.sin_port = udp_port;
   udpbind.sin_family = AF_INET;
 
+  memset(&udpbind6, 0, sizeof(udpbind6));
+  udpbind6.sin6_family = AF_INET6;
+  udpbind6.sin6_addr = in6addr_any;
+  udpbind6.sin6_port = udp_port;
+
   /* Adresse und Port binden */
-  if (bind(tmp_fd, (struct sockaddr *)&udpbind, sizeof(udpbind)) < 0)
+  if (bind(tmp_fd, family == AF_INET6 ? (struct sockaddr *)&udpbind6
+                                     : (struct sockaddr *)&udpbind,
+           family == AF_INET6 ? sizeof(udpbind6) : sizeof(udpbind)) < 0)
   {
     xprintf("AX25IP : cannot bind udp socket: %s\n", strerror(errno));
     LOGL2("AX25IP : cannot bind udp socket: %s\n", strerror(errno));
@@ -1716,6 +1803,7 @@ int setup_udp(unsigned short udp_port)
     return(-1);
   }
 
+  udp_socket_family = family;
   return(tmp_fd);
 }
 
@@ -1774,6 +1862,7 @@ void ax25ip_recv(void)
   register int i = 0;
   register int max_fd = -1;
   socklen_t    fromlen = sizeof(from);
+  struct sockaddr_storage udp_from;
   int          hdr_len = 0;
   UBYTE        buf[MAX_FRAME+1];
   UBYTE        *bufptr;
@@ -1854,7 +1943,24 @@ void ax25ip_recv(void)
   /* RX fuer UDP, aber nur, wenn nicht schon TCP was empfangen hat */
   if ((fd_udp != -1) && (FD_ISSET(fd_udp, &rmask) && (l == 0)))
   {
-    l = recvfrom(fd_udp, (UBYTE *)(bufptr = buf), MAX_FRAME, 0, (struct sockaddr *) &from, &fromlen);
+    fromlen = sizeof(udp_from);
+    memset(&udp_from, 0, sizeof(udp_from));
+    l = recvfrom(fd_udp, (UBYTE *)(bufptr = buf), MAX_FRAME, 0,
+                 (struct sockaddr *)&udp_from, &fromlen);
+    if (l > 0 && udp_from.ss_family == AF_INET6)
+    {
+      struct sockaddr_in6 *source = (struct sockaddr_in6 *)&udp_from;
+      if (IN6_IS_ADDR_V4MAPPED(&source->sin6_addr))
+      {
+        struct sockaddr_in ipv4;
+        memset(&ipv4, 0, sizeof(ipv4));
+        ipv4.sin_family = AF_INET;
+        ipv4.sin_port = source->sin6_port;
+        memcpy(&ipv4.sin_addr, &source->sin6_addr.s6_addr[12], sizeof(ipv4.sin_addr));
+        memset(&udp_from, 0, sizeof(udp_from));
+        memcpy(&udp_from, &ipv4, sizeof(ipv4));
+      }
+    }
 
     if (l > 0)
     {
@@ -1897,7 +2003,8 @@ void ax25ip_recv(void)
     /* Absenderrufzeichen ermitteln und konvertieren      */
     /* Wir brauchen hier nicht den eigentlichen Absender, */
     /* sondern den, der als letztes gedigipeated hat.     */
-    struct in_addr ipaddr;
+    struct sockaddr_storage source;
+    int source_port = 0;
 #ifndef AXIPR_UDP
     struct route_table_entry* rtptr;
 #endif /* AXIPR_UDP */
@@ -1909,35 +2016,57 @@ void ax25ip_recv(void)
     for (i = 0; i < L2CALEN; ++i)
       srccall[i] = srccall[i] << 1;
 
-    /* Gibt es schon eine IP fuer dieses Call, dann kann sich die IP  */
-    /* geaendert haben. Falls ja und es sich um einen dynamischen Eintrag */
-    /* handelt, dann loeschen und neuen Eintrag anlegen. */
-#ifndef AXIPR_UDP
-    if ((rtptr = call_to_ip(srccall)) != NULL)
+    memset(&source, 0, sizeof(source));
+    if (UDP_Frame)
     {
-      if ((   (rtptr->ip_addr != from.sin_addr.s_addr)
-           || (rtptr->udp_port != (UDP_Frame == TRUE ? ntohs(from.sin_port) : 0)))
-           && (rtptr->timeout != 0))
-        route_del(srccall); /* Route loeschen */
-      else
-      {
-        if (rtptr != &default_route)
-          return;             /* Adresse unveraendert */
-      }
+      source = udp_from;
+      if (source.ss_family == AF_INET6)
+        source_port = ntohs(((struct sockaddr_in6 *)&source)->sin6_port);
+      else if (source.ss_family == AF_INET)
+        source_port = ntohs(((struct sockaddr_in *)&source)->sin_port);
     }
-#endif /* AXIPR_UDP */
-
-    ipaddr.s_addr = from.sin_addr.s_addr;
+    else
+      memcpy(&source, &from, sizeof(from));
 
 #ifndef AXIPR_UDP
-    /* Route eintragen */
-    route_add((unsigned char*)inet_ntoa(ipaddr), NULL, srccall,
-              (UDP_Frame == TRUE ? ntohs(from.sin_port) : 0), FALSE, uDynTimeout);
+    {
+      char address[HNLEN];
+      socklen_t address_length;
+      int changed = TRUE;
+      if (source.ss_family == AF_INET)
+        address_length = sizeof(struct sockaddr_in);
+      else if (source.ss_family == AF_INET6)
+        address_length = sizeof(struct sockaddr_in6);
+      else
+        return;
+      if ((rtptr = call_to_ip(srccall)) != NULL && rtptr != &default_route)
+      {
+        if (source.ss_family == AF_INET && rtptr->address_family == AF_INET)
+          changed = memcmp(&rtptr->ip_addr,
+                           &((struct sockaddr_in *)&source)->sin_addr, 4) != 0;
+        else if (source.ss_family == AF_INET6 && rtptr->address_family == AF_INET6)
+          changed = memcmp(&rtptr->ipv6_addr,
+                           &((struct sockaddr_in6 *)&source)->sin6_addr,
+                           sizeof(rtptr->ipv6_addr)) != 0
+                    || rtptr->ipv6_scope_id != ((struct sockaddr_in6 *)&source)->sin6_scope_id;
+        if ((changed || rtptr->udp_port != htons(source_port)) && rtptr->timeout != 0)
+          route_del(srccall);
+        else
+          return;
+      }
+      if (getnameinfo((struct sockaddr *)&source, address_length, address,
+                      sizeof(address), NULL, 0, NI_NUMERICHOST) != 0)
+      {
+        xprintf("AX25IP: cannot format learned address\n");
+        return;
+      }
+      route_add((unsigned char *)address, &source, srccall,
+                source_port, FALSE, uDynTimeout);
+    }
 #else
-    route_analyse(ipaddr, srccall,
-                  (UDP_Frame == TRUE ? ntohs(from.sin_port) : 0));
-  }
+    route_analyse(&source, srccall, source_port);
 #endif /* AXIPR_UDP */
+  }
 }
 
 void ax25ip_send(void)
@@ -1946,9 +2075,12 @@ void ax25ip_send(void)
   int            len = 0;
   int            fd = -1;
   MBHEAD        *txfhdl;
+  struct sockaddr_in6 to6;
+  const struct sockaddr *destination;
+  socklen_t destination_length;
 
   struct route_table_entry *rt;
-  struct hostent *hstent;
+  struct sockaddr_storage resolved_address;
 
   unsigned char *call;
 
@@ -1991,11 +2123,17 @@ void ax25ip_send(void)
 #endif
 
     /* Ein Host, zu dem bisher keine IP-Adresse aufgeloest werden konnte */
-    if (rt->ip_addr == 0L)
+    if (rt->address_family == AF_UNSPEC)
     {
       /* Versuchen, jetzt eine IP-Adresse zu bestimmen */
-      if ((hstent = gethostbyname((char*)rt->hostname)) != NULL)
-         memcpy((unsigned char*)&rt->ip_addr, (unsigned char *)&hstent->h_addr_list[0][0], 4);
+      if (axip_dns_resolve((char*)rt->hostname, &resolved_address) == 0
+          && (resolved_address.ss_family != AF_INET6 || rt->udp_port != 0))
+        axip_set_socket_address(rt, &resolved_address);
+    }
+    if (rt->address_family == AF_UNSPEC)
+    {
+      LOGL2("error: no resolved address for %s", call_to_a(call));
+      return;
     }
 
     /* Checksumme anhaengen */
@@ -2011,12 +2149,47 @@ void ax25ip_send(void)
       to.sin_port = 0;  /* bei IP kein Port */
 
     to.sin_family = AF_INET;
+    destination = (const struct sockaddr *)&to;
+    destination_length = sizeof(to);
 
     /* Unterscheidung IP oder UDP */
     if (to.sin_port == 0)
+    {
+      if (rt->address_family != AF_INET)
+      {
+        LOGL2("error: raw AXIP requires IPv4");
+        return;
+      }
       fd = fd_ip;
+    }
     else
+    {
       fd = fd_udp;
+      if (udp_socket_family == AF_INET6)
+      {
+        memset(&to6, 0, sizeof(to6));
+        to6.sin6_family = AF_INET6;
+        to6.sin6_port = rt->udp_port;
+        if (rt->address_family == AF_INET6)
+        {
+          to6.sin6_addr = rt->ipv6_addr;
+          to6.sin6_scope_id = rt->ipv6_scope_id;
+        }
+        else
+        {
+          to6.sin6_addr.s6_addr[10] = 0xff;
+          to6.sin6_addr.s6_addr[11] = 0xff;
+          memcpy(&to6.sin6_addr.s6_addr[12], &rt->ip_addr, 4);
+        }
+        destination = (const struct sockaddr *)&to6;
+        destination_length = sizeof(to6);
+      }
+      else if (rt->address_family != AF_INET)
+      {
+        LOGL2("error: IPv6 UDP socket unavailable");
+        return;
+      }
+    }
 
     if (fd == -1)
     {
@@ -2024,7 +2197,7 @@ void ax25ip_send(void)
       return;
     }
 
-    if (sendto(fd, (char *)buf, len, 0, (struct sockaddr *)&to, sizeof(to)) < 0)
+    if (sendto(fd, (char *)buf, len, 0, destination, destination_length) < 0)
       LOGL2("error: sendto failed, fd=%u error=%s", fd, strerror(errno));
   }
 }
@@ -2117,10 +2290,10 @@ void route_init(void)
 
 /* Add a new route entry */
 #ifndef AXIPR_UDP
-static void route_add(unsigned char* hostname, struct hostent *hstent, unsigned char *call, int udpport,
+static void route_add(unsigned char* hostname, const struct sockaddr_storage *hstent, unsigned char *call, int udpport,
                       int default_rt, int timeout)
 #else
-static BOOLEAN route_add(unsigned char *host, struct hostent *hstent, unsigned char *call, int udpport,
+static BOOLEAN route_add(unsigned char *host, const struct sockaddr_storage *hstent, unsigned char *call, int udpport,
                          int default_rt, int timeout, char *hostname
 #ifdef AXIPR_HTML
                       , char *timeset, UWORD protokoll
@@ -2130,7 +2303,17 @@ static BOOLEAN route_add(unsigned char *host, struct hostent *hstent, unsigned c
 {
    register unsigned int i = 0;
    struct route_table_entry *rtptr;
-   struct hostent *hst;
+   struct sockaddr_storage resolved_address;
+
+   if (hstent != NULL && hstent->ss_family == AF_INET6 && udpport == 0)
+   {
+     putmsg("AX25IP: IPv6 is supported for UDP routes only.\r");
+#ifndef AXIPR_UDP
+     return;
+#else
+     return FALSE;
+#endif
+   }
 
    /* Eintrag soll Defaultroute sein */
    if (default_rt)
@@ -2138,21 +2321,24 @@ static BOOLEAN route_add(unsigned char *host, struct hostent *hstent, unsigned c
       for (i = 1; i < 7 ;++i)
         default_route.callsign[i] = 0;
 
-      if (hstent != NULL)
-        memcpy(&default_route.ip_addr, (unsigned char *)&hstent->h_addr_list[0][0], 4);
-      else
-        memset(&default_route.ip_addr, 0, 4);
-
       default_route.udp_port = htons((unsigned short)udpport);
+      axip_set_socket_address(&default_route, hstent);
+#ifdef AXIPR_UDP
+      default_route.org_udp_port = default_route.udp_port;
+#endif
       default_route.timeout = 0;                /* Defaultroute ohne Timeout */
 
       if (hostname != NULL)
-        strncpy((char*)&default_route.hostname, (char*)hostname, HNLEN);
+      {
+        strncpy((char *)default_route.hostname, (char *)hostname, HNLEN - 1);
+        default_route.hostname[HNLEN - 1] = '\0';
+      }
 
       default_route.callsign[0] = 1;            /* mark valid */
 
       /* Socket ggf. installieren */
       ax25ip_check_up();
+      ax25ip_check_down();
 
 #ifndef AXIPR_UDP
       return;
@@ -2171,7 +2357,7 @@ static BOOLEAN route_add(unsigned char *host, struct hostent *hstent, unsigned c
 
    /* Check auf doppelte Eintraege, Eintrag wird nur angenommen wenn */
    /* es noch noch keinen Eintrag unter diesem Call gibt. */
-   if (((rtptr = call_to_ip(call)) != NULL) && (rtptr->ip_addr != default_route.ip_addr))
+   if (((rtptr = call_to_ip(call)) != NULL) && rtptr != &default_route)
    {
 #ifndef AXIPR_UDP
      putmsg("A route to this callsign is already set up, delete it first.\r");
@@ -2182,6 +2368,9 @@ static BOOLEAN route_add(unsigned char *host, struct hostent *hstent, unsigned c
 #else
      UpdateRoute(call, udpport, timeout, hostname, timeset, protokoll);
 #endif /* AXIPR_HTML */
+     axip_set_socket_address(rtptr, hstent);
+     ax25ip_check_up();
+     ax25ip_check_down();
      return(FALSE);
 #endif /* AXIPR_UDP */
    }
@@ -2199,6 +2388,8 @@ static BOOLEAN route_add(unsigned char *host, struct hostent *hstent, unsigned c
 #endif /* AXIPR_UDP */
    }
 
+   memset(&route_tbl[route_tbl_top], 0, sizeof(route_tbl[route_tbl_top]));
+
    /* Call eintragen */
    for (i = 0; i < 6; ++i)
      route_tbl[route_tbl_top].callsign[i] = call[i] & 0xfe;
@@ -2206,24 +2397,19 @@ static BOOLEAN route_add(unsigned char *host, struct hostent *hstent, unsigned c
    /* SSID eintragen */
    route_tbl[route_tbl_top].callsign[6] = (call[6] & 0x1e) | 0x60;
 
-   if (hstent != NULL && hstent->h_length != 0)
-   {
-     memcpy((unsigned char*)&route_tbl[route_tbl_top].ip_addr, (unsigned char *)&hstent->h_addr_list[0][0], 4);
-   }
-   else
-     memset(&route_tbl[route_tbl_top].ip_addr, 0, sizeof(route_tbl[route_tbl_top].ip_addr));
-
    route_tbl[route_tbl_top].udp_port = htons((unsigned short)udpport);
+   axip_set_socket_address(&route_tbl[route_tbl_top], hstent);
    route_tbl[route_tbl_top].timeout = timeout;
 
    if (hostname != NULL)
    {
-     memcpy(&route_tbl[route_tbl_top].hostname, hostname, strlen((char*)hostname));
+     strncpy((char *)route_tbl[route_tbl_top].hostname, hostname, HNLEN - 1);
      /* Keine Adressaufloesung bisher, dann probieren wir es noch einmal */
      if (hstent == NULL)
      {
-       if ((hst = gethostbyname((char*)hostname)) != NULL)
-         memcpy((unsigned char*)&route_tbl[route_tbl_top].ip_addr, &hst->h_addr_list[0][0], 4);
+       if (axip_dns_resolve((char*)hostname, &resolved_address) == 0
+           && (resolved_address.ss_family != AF_INET6 || udpport != 0))
+         axip_set_socket_address(&route_tbl[route_tbl_top], &resolved_address);
      }
    }
 
@@ -2530,8 +2716,8 @@ int parse_line(char *buf)
    char *q;
    char hostname[HNLEN];
    unsigned char tcall[7];
-   struct hostent hstent;
-   struct hostent *he;
+   struct sockaddr_storage resolved_address;
+   const struct sockaddr_storage *he;
    int i = 0;
    int uport = 0;
    int dfalt = 0;
@@ -2631,18 +2817,11 @@ int parse_line(char *buf)
       if (q == NULL)
         return(-1);
 
-      he = gethostbyname(q);
-
-      /* Keine gueltige IP-Adresse ? */
-      if (he == NULL)
-      {
-        /* Da route_add() eine hostent-Struktur braucht, bauen wir ihm eine. */
-        /* Den Hostname sichern und den Zeiger auf den Puffer im hostent eintragen. */
-        strncpy(hostname, q, HNLEN);
-
-         he = &hstent;
-         he->h_name = hostname;
-      }
+      if (strlen(q) >= sizeof(hostname))
+        return(-7);
+      strcpy(hostname, q);
+      he = axip_dns_resolve(hostname, &resolved_address) == 0
+           ? &resolved_address : NULL;
 
       q = strtok(NULL, " \t\n\r");
 
@@ -2662,9 +2841,9 @@ int parse_line(char *buf)
         }
       }
 #ifndef AXIPR_UDP
-      route_add((unsigned char*)he->h_name, he, tcall, uport, dfalt, 0);
+      route_add((unsigned char*)hostname, he, tcall, uport, dfalt, 0);
 #else
-      route_add((unsigned char*)he->h_name, he, tcall, uport, dfalt, 0, (char *)he->h_name
+      route_add((unsigned char*)hostname, he, tcall, uport, dfalt, 0, hostname
 #ifdef AXIPR_HTML
                , timeset, P_USER
 #endif /* AXIPR_HTML */
@@ -2771,10 +2950,13 @@ void write_log(const char *format, ...)
 #ifdef AXIPR_UDP
 /* AX25IP-Frame untersuchen, wenn Aenderungen     */
 /* z.B. UDP-Port, IP-Adresse in TBL Aktualisieren.*/
-void route_analyse(struct in_addr ip, unsigned char *call, int uport)
+void route_analyse(const struct sockaddr_storage *source, unsigned char *call, int uport)
 {
   register int   i;
   char           mycall[7];
+  char           address[HNLEN];
+  socklen_t      address_length;
+  int            error;
 
 #ifdef AXIPR_HTML
   char        *timeset = set_time();
@@ -2797,9 +2979,7 @@ void route_analyse(struct in_addr ip, unsigned char *call, int uport)
       if (addrmatch((unsigned char *)mycall , route_tbl[i].callsign))
       {
         /* Bei Aenderung uebernehmen */
-        if (memcmp(&ip, &route_tbl[i].ip_addr, 4) != 0)
-          /* IP-Adresse hat sich geaendert */
-          memcpy(&route_tbl[i].ip_addr, &ip, 4);
+        axip_set_socket_address(&route_tbl[i], source);
 
         /* UDP-Port unterschiedlich? */
         if (route_tbl[i].udp_port != htons((UWORD)uport))
@@ -2820,12 +3000,25 @@ void route_analyse(struct in_addr ip, unsigned char *call, int uport)
       }
    }
 
+   if (source->ss_family == AF_INET)
+     address_length = sizeof(struct sockaddr_in);
+   else if (source->ss_family == AF_INET6)
+     address_length = sizeof(struct sockaddr_in6);
+   else
+     return;
+   error = getnameinfo((const struct sockaddr *)source, address_length,
+                       address, sizeof(address), NULL, 0, NI_NUMERICHOST);
+   if (error != 0)
+   {
+     xprintf("AX25IP: cannot format learned address: %s\n", gai_strerror(error));
+     return;
+   }
 #ifndef AXIPR_HTML
    /* Auto-Route eintragen */
-   route_add((unsigned char*)inet_ntoa(ip), NULL, call,uport, FALSE, uDynTimeout, (char*)inet_ntoa(ip));
+   route_add((unsigned char*)address, source, call,uport, FALSE, uDynTimeout, address);
 #else
    /* Auto-Route eintragen */
-   route_add((unsigned char*)inet_ntoa(ip), NULL, call,uport, FALSE, uDynTimeout, (char*)inet_ntoa(ip), timeset, P_USER);
+   route_add((unsigned char*)address, source, call,uport, FALSE, uDynTimeout, address, timeset, P_USER);
 #endif /* AXIPR_HTML */
 }
 
@@ -2888,7 +3081,7 @@ void UpdateRoute(unsigned char *srccall,
     {
       route_tbl[i].org_udp_port = route_tbl[i].udp_port = htons((unsigned short)udpport);
       /* Hostname eintragen. */
-      (void)memcpy(route_tbl[i].hostname, hostname, HNLEN);
+      snprintf((char *)route_tbl[i].hostname, HNLEN, "%s", hostname);
       /* ggf. Timeout setzen. */
       route_tbl[i].timeout = timeout;
 

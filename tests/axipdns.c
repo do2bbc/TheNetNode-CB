@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <netdb.h>
+#include <net/if.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +24,28 @@ int __real_getaddrinfo(const char *node, const char *service,
 int __wrap_getaddrinfo(const char *node, const char *service,
                        const struct addrinfo *hints, struct addrinfo **result)
 {
+  if (strcmp(node, "ipv6.test") == 0)
+    return __real_getaddrinfo("::1", service, hints, result);
+  if (strcmp(node, "scoped.test") == 0)
+    return __real_getaddrinfo("fe80::1%lo", service, hints, result);
+  if (strcmp(node, "dual.test") == 0)
+  {
+    struct addrinfo *ipv4;
+    struct addrinfo *last;
+    int error = __real_getaddrinfo("::1", service, hints, result);
+    if (error != 0)
+      return error;
+    error = __real_getaddrinfo("127.0.0.1", service, hints, &ipv4);
+    if (error != 0)
+    {
+      freeaddrinfo(*result);
+      return error;
+    }
+    for (last = *result; last->ai_next != NULL; last = last->ai_next)
+      ;
+    last->ai_next = ipv4;
+    return 0;
+  }
   if (strcmp(node, "slow.test") == 0)
   {
     assert(pthread_mutex_lock(&resolver_mutex) == 0);
@@ -84,13 +107,14 @@ static int collect_until_complete(struct axip_dns_result *results,
 
 int main(void)
 {
-  const char *hostnames[] = {"slow.test", "missing.test"};
+  const char *hostnames[] = {"slow.test", "missing.test", "ipv6.test", "dual.test",
+                             "scoped.test"};
   const char *second_batch[] = {"missing.test"};
   struct axip_dns_result results[AXIP_DNS_MAX_HOSTS];
   size_t count;
   int complete;
 
-  assert(axip_dns_submit(hostnames, 2) == 0);
+  assert(axip_dns_submit(hostnames, 5) == 0);
   assert(axip_dns_submit(second_batch, 1) == EBUSY);
   wait_for_resolver();
 
@@ -103,10 +127,23 @@ int main(void)
   assert(pthread_cond_broadcast(&resolver_condition) == 0);
   assert(pthread_mutex_unlock(&resolver_mutex) == 0);
 
-  assert(collect_until_complete(results, 2) == 2);
+  assert(collect_until_complete(results, 5) == 5);
   assert(results[0].index == 0 && results[0].resolved);
-  assert(ntohl(results[0].address.s_addr) == 0x7f000001);
+  assert(results[0].address.ss_family == AF_INET);
+  assert(ntohl(((struct sockaddr_in *)&results[0].address)->sin_addr.s_addr)
+         == 0x7f000001);
   assert(results[1].index == 1 && !results[1].resolved);
+  assert(results[2].index == 2 && results[2].resolved);
+  assert(results[2].address.ss_family == AF_INET6);
+  assert(IN6_IS_ADDR_LOOPBACK(
+      &((struct sockaddr_in6 *)&results[2].address)->sin6_addr));
+  assert(results[3].index == 3 && results[3].resolved);
+  assert(results[3].address.ss_family == AF_INET);
+  assert(results[4].index == 4 && results[4].resolved);
+  assert(results[4].address.ss_family == AF_INET6);
+  assert(if_nametoindex("lo") != 0);
+  assert(((struct sockaddr_in6 *)&results[4].address)->sin6_scope_id
+         == if_nametoindex("lo"));
 
   assert(axip_dns_submit(second_batch, 1) == 0);
   assert(collect_until_complete(results, 1) == 1);
