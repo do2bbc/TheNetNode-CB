@@ -215,6 +215,12 @@ Falls ein zuvor gespeicherter Convers-Link ein `^@` hinter dem Call enthaelt
 mit `/L - cb0hk` entfernen und mit `/L + cb0hk` neu eintragen.
 Anschliessend die Konfiguration an der Node-Konsole mit `SPARAM` speichern.
 
+Convers-Links mit SSID lassen sich zum Beispiel mit `/L + dig343-5`
+eintragen. Der Convers-Hostname wird dabei `dig343`; falls die Gegenstelle
+einen anderen Hostnamen verwendet, diesen und das Ziel getrennt angeben,
+zum Beispiel `/L + hostname DIG343-5`. Mit `SPARAM` speichern. Ein frueher
+falsch ohne SSID gespeicherter Eintrag muss neu eingetragen werden.
+
 ## 4. Onlinehilfe nachinstallieren
 
 Die Onlinehilfe ist ein separates Programm. Falls `HELP` keine Hilfe anzeigt,

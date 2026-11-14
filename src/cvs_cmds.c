@@ -1261,6 +1261,39 @@ static BOOLEAN scan_linksarg(char *arg, char *hostname, WORD *act,
     /* Nicht korrekt, abbruch. */
     return(FALSE);
 
+  {
+    WORD remaining = bcnt;
+    char *next = bp;
+
+    if (!skipsp(&remaining, &next))
+    {
+      char *dash = strchr(buffer, '-');
+      char *digit;
+
+      if (dash != NULL && dash != buffer && dash - buffer <= L2CALEN)
+      {
+        for (digit = dash + 1; *digit >= '0' && *digit <= '9'; digit++)
+          ;
+        if (digit != dash + 1 && (*digit == NUL || *digit == ' '))
+        {
+          WORD call_len = (WORD)(digit - buffer);
+          char *call_arg = buffer;
+
+          if (getcal(&call_len, &call_arg, TRUE, call) != YES || call_len != 0)
+            return(FALSE);
+          callss2str(hostname, call);
+          strlwr(hostname);
+          *ip = '\0';
+          *prt = 255;
+          *via = '\0';
+          if (*act)
+            IPConvDelTBL(hostname);
+          return(TRUE);
+        }
+      }
+    }
+  }
+
   /* Pruefe das AX25-CALL. */
   if (getcal(&bcnt, &bp, TRUE, call) == YES)       /* Call ok ? */
     *ip = '\0';

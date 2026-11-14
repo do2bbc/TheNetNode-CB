@@ -152,7 +152,30 @@ int main(void) {
   char explicit_call[] = "+ cb0hk CB0HK-2";
   assert(scan_linksarg(explicit_call, hostname, &act, call, via, &port, ip));
   assert(!memcmp(call, "CB0HK \144", L2IDLEN) && port == 255);
-  free(first); free(second);
+  char implicit_ssid[] = "+ dig343-5   ";
+  assert(scan_linksarg(implicit_ssid, hostname, &act, call, via, &port, ip));
+  assert(!strcmp(hostname, "dig343") && !memcmp(call, "DIG343\152", L2IDLEN));
+  assert(port == 255 && !via[0] && !ip[0]);
+  PERMLINK *with_ssid = update_permlinks(hostname, NULL, 1);
+  assert(with_ssid);
+  cpyid(with_ssid->call, call);
+  with_ssid->port = port;
+  MBHEAD saved = {{0}, 0};
+  dump_convc(&saved);
+  assert(strstr(saved.text, "CONV C dig343 DIG343-5\r"));
+  char reloaded[] = "+ dig343 DIG343-5";
+  assert(scan_linksarg(reloaded, hostname, &act, call, via, &port, ip));
+  assert(!memcmp(call, "DIG343\152", L2IDLEN));
+  char max_ssid[] = "+ dig343-15";
+  assert(scan_linksarg(max_ssid, hostname, &act, call, via, &port, ip));
+  assert(!strcmp(hostname, "dig343") && !memcmp(call, "DIG343\176", L2IDLEN));
+  char bad_ssid[] = "+ dig343-16";
+  assert(!scan_linksarg(bad_ssid, hostname, &act, call, via, &port, ip));
+  char remove_ssid[] = "- dig343-5";
+  act = 0;
+  assert(scan_linksarg(remove_ssid, hostname, &act, call, via, &port, ip));
+  assert(act == 1 && !strcmp(hostname, "dig343"));
+  free(first); free(second); free(with_ssid);
   puts("Convers link parsing and saved configuration regressions passed");
 }
 EOF
