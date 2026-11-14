@@ -58,16 +58,174 @@
 
 #ifdef AX25IP
 #include "ax25ip.h"
+#include "axipdns.h"
 
 unsigned short my_udp;
+
+struct axip_dns_target
+{
+  unsigned char callsign[L2IDLEN];
+  char hostname[HNLEN];
+  int is_default;
+};
+
+static struct axip_dns_target axip_dns_targets[AXIP_DNS_MAX_HOSTS];
+static size_t axip_dns_target_count;
+static UWORD last_names_update_tic;
+static BOOLEAN names_update_seen = FALSE;
+static BOOLEAN names_update_busy_warned = FALSE;
+
+static void axip_dns_apply_result(const struct axip_dns_result *result)
+{
+  struct axip_dns_target *target;
+  struct route_table_entry *route = NULL;
+  register unsigned int i;
+
+  if (result->index >= axip_dns_target_count)
+    return;
+
+  target = &axip_dns_targets[result->index];
+  if (target->is_default)
+  {
+    if (default_route.callsign[0] == 1
+        && strncmp((char *)default_route.hostname, target->hostname,
+                   HNLEN) == 0)
+      route = &default_route;
+  }
+  else
+  {
+    for (i = 0; i < route_tbl_top; ++i)
+    {
+      if (memcmp(route_tbl[i].callsign, target->callsign, L2IDLEN) == 0
+          && strncmp((char *)route_tbl[i].hostname, target->hostname,
+                     HNLEN) == 0)
+      {
+        route = &route_tbl[i];
+        break;
+      }
+    }
+  }
+
+  if (route == NULL)
+    return;
+
+  if (result->resolved
+      && memcmp(&route->ip_addr, &result->address.s_addr,
+                sizeof(result->address.s_addr)) != 0)
+  {
+    memcpy(&route->ip_addr, &result->address.s_addr,
+           sizeof(result->address.s_addr));
+    LOGL1("IP-adress for %s changed !", target->hostname);
+  }
+
+#ifdef AXIPR_UDP
+  route->udp_port = route->org_udp_port;
+#endif /* AXIPR_UDP */
+}
+
+static void axip_dns_collect_results(void)
+{
+  struct axip_dns_result results[AXIP_DNS_MAX_HOSTS];
+  size_t result_count;
+  size_t i;
+  int complete;
+  int error;
+
+  error = axip_dns_collect(results, AXIP_DNS_MAX_HOSTS,
+                           &result_count, &complete);
+  if (error != 0)
+  {
+    xprintf("AX25IP: DNS result collection failed: %s\n", strerror(error));
+    return;
+  }
+
+  for (i = 0; i < result_count; ++i)
+    axip_dns_apply_result(&results[i]);
+
+  if (complete)
+  {
+    axip_dns_target_count = 0;
+    names_update_busy_warned = FALSE;
+  }
+}
+
+static void axip_dns_start_route_update(void)
+{
+  struct axip_dns_target targets[AXIP_DNS_MAX_HOSTS];
+  const char *hostnames[AXIP_DNS_MAX_HOSTS];
+  size_t count = 0;
+  size_t i;
+  size_t length;
+  int error;
+
+  memset(targets, 0, sizeof(targets));
+
+  for (i = 0; i < (size_t)route_tbl_top; ++i)
+  {
+    length = 0;
+    while (length < HNLEN && route_tbl[i].hostname[length] != 0)
+      ++length;
+    if (length == 0)
+      continue;
+    if (length == HNLEN)
+    {
+      xprintf("AX25IP: route hostname is not terminated; DNS refresh skipped\n");
+      continue;
+    }
+
+    memcpy(targets[count].callsign, route_tbl[i].callsign, L2IDLEN);
+    memcpy(targets[count].hostname, route_tbl[i].hostname, length + 1);
+    targets[count].is_default = FALSE;
+    hostnames[count] = targets[count].hostname;
+    ++count;
+  }
+
+  if (default_route.callsign[0] == 1)
+  {
+    length = 0;
+    while (length < HNLEN && default_route.hostname[length] != 0)
+      ++length;
+    if (length != 0 && length < HNLEN)
+    {
+      memset(&targets[count], 0, sizeof(targets[count]));
+      memcpy(targets[count].hostname, default_route.hostname, length + 1);
+      targets[count].is_default = TRUE;
+      hostnames[count] = targets[count].hostname;
+      ++count;
+    }
+    else if (length == HNLEN)
+      xprintf("AX25IP: default route hostname is not terminated; DNS refresh skipped\n");
+  }
+
+  if (count == 0)
+    return;
+
+  error = axip_dns_submit(hostnames, count);
+  if (error == EBUSY)
+  {
+    if (!names_update_busy_warned)
+    {
+      xprintf("AX25IP: previous DNS refresh is still pending; skipping this refresh\n");
+      names_update_busy_warned = TRUE;
+    }
+    return;
+  }
+  if (error != 0)
+  {
+    xprintf("AX25IP: cannot start DNS refresh: %s\n", strerror(error));
+    return;
+  }
+
+  memcpy(axip_dns_targets, targets, count * sizeof(targets[0]));
+  axip_dns_target_count = count;
+  names_update_busy_warned = FALSE;
+}
 
 /*************************************************************************/
 /* AX25IP-Hausaufgaben : RX, TX und Routingtabellenpflege                */
 /*************************************************************************/
 void ax25ip(void)
 {
-  register UBYTE uEntry = 0;
-
   /* nur wenn Interface aktiv ist */
   if (!ax25ip_active)
     return;
@@ -75,13 +233,16 @@ void ax25ip(void)
   /* empfangene Frames abholen */
   ax25ip_recv();
 
-  /* IP-Adressen der Routentabelle pflegen */
-  if ((uNamesUpdate != 0) && (tic10 % uNamesUpdate == 0))
-  {
-    for (; uEntry <= TABLE_SIZE; ++uEntry)
-      route_update(&route_tbl[uEntry]);
+  axip_dns_collect_results();
 
-    route_update(&default_route);
+  /* IP-Adressen der Routentabelle pflegen */
+  if ((uNamesUpdate != 0)
+      && (tic10 % uNamesUpdate == 0)
+      && (!names_update_seen || last_names_update_tic != tic10))
+  {
+    names_update_seen = TRUE;
+    last_names_update_tic = tic10;
+    axip_dns_start_route_update();
   }
 
   /* ausstehende Frames senden wenn vorhanden */
@@ -198,33 +359,6 @@ void route_age(void)
         route_del(route_tbl[i].callsign);
     }
   }
-}
-
-/* Hostname -> IP-Adressen aufloesen */
-void route_update(struct route_table_entry *rtentry)
-{
-  struct hostent *hstent;
-
-  /* Kein Hostname, dann auch keine Umwandlung moeglich */
-  if (rtentry->hostname[0] == 0)
-    return;
-
-  /* Hostname im IP-Adresse konvertieren */
-  if ((hstent = gethostbyname((char*)&rtentry->hostname[0])) != NULL)
-  {
-    /* Bei Aenderung uebernehmen */
-    if (memcmp(&rtentry->ip_addr, &hstent->h_addr_list[0][0], 4) != 0)
-    {
-      /* IP-Adresse hat sich geaendert */
-      memcpy(&rtentry->ip_addr, &hstent->h_addr_list[0][0], 4);
-      LOGL1("IP-adress for %s changed !", rtentry->hostname);
-    }
-  }
-
-#ifdef AXIPR_UDP
-  /* Original UDP-Port setzen. */
-  rtentry->udp_port = rtentry->org_udp_port;
-#endif /* AXIPR_UDP */
 }
 
 /* Partielle Frame-Analyse fuer dyn. Eintraege */

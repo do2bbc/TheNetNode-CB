@@ -203,6 +203,7 @@ CFLAGS_LIN	+= -DUSEREXEPATH=\"$(TNNUSEREXE)\"
 CFLAGS_LIN	+= -DSYSEXEPATH=\"$(TNNSYSEXE)\"
 CFLAGS_LIN	+= -DPACSATPATH=\"$(TNNPACSAT)\"
 CFLAGS_LIN	+= -DMSGPATH=\"$(TNNMSG)\"
+CFLAGS_LIN	+= -pthread
 
 # MIPS-Systeme bekommen noch ein besonderes Kennzeichen
 ifeq ($(MIPS), YES)
@@ -229,6 +230,7 @@ LINUXSRCS		+= $(LIN)/init.c $(LIN)/linux.c $(LIN)/l1linux.c
 LINUXSRCS		+= $(LIN)/axipx.c $(LIN)/ax25ip.c $(LIN)/kernelip.c
 LINUXSRCS		+= $(LIN)/kernelax.c $(LIN)/6pack.c
 LINUXSRCS		+= $(LIN)/l1attach.c $(LIN)/ostcpip.c $(LIN)/osipconv.c
+LINUXSRCS		+= $(LIN)/axipdns.c
 LINUXSRCS		+= $(SRC)/tcpkiss.c
 LINUXOBJS		:= $(LINUXSRCS:.c=.o)
 VANSRC			:= $(LIN)/vanlinux.c
@@ -255,6 +257,7 @@ HDRNAMS			+=  system.h speech.h tnn.h typedef.h
 LINUXHDRS		:= $(patsubst %,$(HDR)/%,$(HDRNAMS))
 LINUXHDRS		+= $(LIN)/linux.h $(LIN)/vanlinux.h $(LIN)/linclude.h
 LINUXHDRS		+= $(LIN)/kernelip.h $(LIN)/kernelax.h $(LIN)/ax25ip.h
+LINUXHDRS		+= $(LIN)/axipdns.h
 LINUXHDRS		+= $(HDR)/tcpkiss.h
 GO32HDRS		:= $(patsubst %,$(HDR)/%,$(HDRNAMS)) $(GO32)/api.h 
 GO32HDRS		+= $(GO32)/api32.h $(GO32)/hardware.h $(GO32)/pc.h
@@ -305,7 +308,7 @@ ifeq ($(SYSTEM), LINUX)
 #
 
 # externe Libs
-LIB := -lutil
+LIB := -lutil -pthread
 
 .PHONY:		go32 _dist _mindist _install
 

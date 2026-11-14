@@ -148,7 +148,6 @@ BOOLEAN            route_del(unsigned char*);
 unsigned int       count_routes(BOOLEAN);
 void               route_init(void);
 void               route_age(void);
-void               route_update(struct route_table_entry*);
 BOOLEAN            route_canlearn(MBHEAD*);
 void               add_crc(unsigned char*, int);
 int                addrmatch(unsigned char*, unsigned char*);
