@@ -123,12 +123,17 @@ endif
 CXXFLAGS=$(CFLAGS)
 LD=$(CXX) $(CXXFLAGS)
 LDFLAGS=
-LDFLAGS+=-static -Wl,--subsystem,console:5.01
+WIN32_API_VERSION ?= 0x0501
+WIN32_SUBSYSTEM_VERSION ?= 5.01
+WIN32_BINDIR ?= os/win32/tnn32
+WIN32_EXE ?= tnn32.exe
+
+LDFLAGS+=-static -Wl,--subsystem,console:$(WIN32_SUBSYSTEM_VERSION)
 
 
 # Include Dateien
 CFLAGS+=-Iinclude -Ios/win32 -Ios/linux -Isrc
-CFLAGS+=-D_WIN32_WINNT=0x0501 -DWINVER=0x0501 -DLOOPBACK
+CFLAGS+=-D_WIN32_WINNT=$(WIN32_API_VERSION) -DWINVER=$(WIN32_API_VERSION) -DLOOPBACK
 # vom DSW -> MAKEFILE Uebersetzer
 CFLAGS+=-fexceptions -W
 #wozu? CFLAGS+=-DWIN32 -D_CONSOLE -D_MBCS 
@@ -148,8 +153,8 @@ LIBS+=-lws2_32 -lwsock32
 LIBS+=-lkernel32 -luser32 -lgdi32 -lwinspool -lcomdlg32 -ladvapi32
 LIBS+=-lshell32 -lole32 -loleaut32 -luuid -lodbc32 -lodbccp32
 
-BIN=os/win32/tnn32
-TARGET=$(BIN)/tnn32.exe
+BIN=$(WIN32_BINDIR)
+TARGET=$(BIN)/$(WIN32_EXE)
 
 
 .PHONY: all contrib tnn clean cleantnn cleancontrib

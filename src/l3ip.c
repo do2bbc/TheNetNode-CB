@@ -999,7 +999,11 @@ pingem(ipaddr target, int seq, int id, int len, char *opt)
     return(FALSE);
 
   put32(tic10, data);           /* aktuelle Uhrzeit hineinschreiben     */
+#ifdef _WIN64
+  put32((ULONG)userpo->uid + 1, data);
+#else
   put32((ULONG)userpo, data);   /* und den User                         */
+#endif
   while (len--)
     putchr(*opt++, data);       /* Optionsfeld schreiben                */
 
@@ -1182,7 +1186,21 @@ icmp_input(register IP * ip, register MBHEAD *bp)
     get16(bp);                  /* id */
     get16(bp);                  /* seq */
     ping_tic = get32(bp);
+#ifdef _WIN64
+    {
+      ULONG ping_uid = get32(bp);
+      ping_user = NULL;
+      for (USRBLK *up = (USRBLK *)usccpl.head;
+           up != (USRBLK *)&usccpl; up = up->unext)
+        if (ping_uid == (ULONG)up->uid + 1)
+        {
+          ping_user = up;
+          break;
+        }
+    }
+#else
     ping_user = (void *)get32(bp);
+#endif
 
     ping_tic = (tic10 - ping_tic) * 10;
     if (ping_tic <= 10)

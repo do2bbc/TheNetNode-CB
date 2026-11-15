@@ -3,7 +3,7 @@
 #define OS_MODE 0                      /* 1 -> Interner Stack / 0 -> OS-Stack */
 
 
-extern int     SetupOS(T_INTERFACE *,              /* Aktive Socket's setzen. */
+extern TNN_SOCKET SetupOS(T_INTERFACE *,           /* Aktive Socket's setzen. */
                        unsigned short);
 
 extern int     RecvOS(UWORD, fd_set);  /* Eingehende TCPIP-Packet bearbeiten. */
@@ -22,7 +22,7 @@ extern BOOLEAN CheckSocketOS(void);       /* Pruefe, ob der Socket aktiv ist. */
 extern void    ListenTCP_OS(void);
 
 extern int     AddUserOS(T_INTERFACE *,               /* TCP-Interface.       */
-               unsigned,                              /* Neuer Socket.        */
+               TNN_SOCKET,                            /* Neuer Socket.        */
                char *);                               /* IP-Adresse.          */
 
 #endif /* OS_STACK */

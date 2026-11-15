@@ -458,7 +458,7 @@ void ServOS(void)                     /* Empfangene Zeichen in Frames packen. */
 
 /* Neue User hinzufuegen, vorrausgesetzt es sind noch freie Sockets vorhanden.*/
 int AddUserOS(T_INTERFACE *ifpoi,                     /* TCP-Interface.       */
-               unsigned     NewSocket,                /* Neuer Socket.        */
+               TNN_SOCKET   NewSocket,                /* Neuer Socket.        */
                char        *ip)                       /* IP-Adresse.          */
 {
 #ifdef DEBUG_MODUS

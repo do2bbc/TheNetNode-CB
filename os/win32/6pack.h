@@ -133,7 +133,7 @@ static UWORD  uRXBufferSize = 0;
 static TNC RING[(UBYTE)MAX_TNC];
 
 #ifndef ATTACH
-int iDescriptor = -1;
+intptr_t iDescriptor = -1;
 #endif /* ATTACH */
 
 fd_set rset;

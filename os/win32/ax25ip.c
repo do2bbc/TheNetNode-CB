@@ -325,7 +325,7 @@ ccpaxipr(void)
   MBHEAD         *mbp;
   int             port = 0;
   register int    i;
-  int             tmp_fd = -1;
+  TNN_SOCKET      tmp_fd = -1;
   int             new_udp = 0;
   unsigned char   call[L2IDLEN];
   char            hostname[HNLEN + 1];
@@ -1484,10 +1484,10 @@ BOOLEAN ax25ip_l1init(int l2port)
 }
 
 /* Einen Filedescriptor fuer IP anlegen */
-int setup_ip(void)
+TNN_SOCKET setup_ip(void)
 {
   /* Temporaerer Filedescriptor */
-  int tmp_fd = -1;
+  TNN_SOCKET tmp_fd = -1;
 
   /* Adressstruktur loeschen */
   memset((char*)&ipbind, 0, sizeof(ipbind));
@@ -1519,10 +1519,10 @@ int setup_ip(void)
 /* Einen Filedescriptor fuer UDP anlegen */
 /* Es muss der UDP-Port angegeben werden, auf dem wir hoeren wollen */
 /* (Achtung: UDP-Port in Network-Byteorder) */
-int setup_udp(unsigned short udp_port)
+TNN_SOCKET setup_udp(unsigned short udp_port)
 {
   /* Temporaerer Filedescriptor */
-  int tmp_fd = -1;
+  TNN_SOCKET tmp_fd = -1;
 
   /* Port-Check */
   if (udp_port == 0)
@@ -1643,7 +1643,6 @@ void ax25ip_recv(void)
   int          l = 0;
   int          iDescriptorsReady = 0;
   register int i = 0;
-  register int max_fd = -1;
   socklen_t    fromlen = sizeof(from);
   int          hdr_len = 0;
   UBYTE        buf[MAX_FRAME+1];
@@ -1662,27 +1661,23 @@ void ax25ip_recv(void)
   /* IP-Filedescriptor eintragen */
   if (fd_ip != -1)
   {
-    FD_SET((unsigned int)fd_ip, &rmask);
-    if (fd_ip > max_fd - 1)
-      max_fd = fd_ip + 1;
+    FD_SET((SOCKET)fd_ip, &rmask);
   }
 
   /* UDP-Filedescriptor eintragen */
   if (fd_udp != -1)
   {
-    FD_SET((unsigned int)fd_udp, &rmask);
-    if (fd_udp > max_fd - 1)
-      max_fd = fd_udp + 1;
+    FD_SET((SOCKET)fd_udp, &rmask);
   }
 
   /* ist was aktiv ? */
-  if (max_fd == -1)
+  if (fd_ip == -1 && fd_udp == -1)
     return;
 
   tv.tv_usec = 0;
   tv.tv_sec = 0;
 
-  iDescriptorsReady = select(max_fd, &rmask, NULL, NULL, &tv);
+  iDescriptorsReady = select(0, &rmask, NULL, NULL, &tv);
 
   /* nix da */
   if (iDescriptorsReady == 0)
@@ -1818,7 +1813,7 @@ void ax25ip_send(void)
 {
   unsigned char  buf[MAX_FRAME];
   int            len = 0;
-  int            fd = -1;
+  TNN_SOCKET     fd = -1;
   MBHEAD        *txfhdl;
 
   struct route_table_entry *rt;
@@ -1899,7 +1894,7 @@ void ax25ip_send(void)
     }
 
     if (sendto(fd, (char *)buf, len, 0, (struct sockaddr *)&to, sizeof(to)) < 0)
-      LOGL2("error: sendto failed, fd=%u error=%s", fd, strerror(errno));
+      LOGL2("error: sendto failed, fd=%lld error=%s", (long long)fd, strerror(errno));
   }
 }
 

@@ -72,7 +72,11 @@
 #endif
 #else
 #  ifdef __WIN32__
-#    define __SYSTEM__                 " (Win32) (CB)"
+#    ifdef _WIN64
+#      define __SYSTEM__               " (Win64) (CB)"
+#    else
+#      define __SYSTEM__               " (Win32) (CB)"
+#    endif
 #  else
 #    ifdef __GO32__
 #      define __SYSTEM__               " (GO32) (CB)"

@@ -54,7 +54,7 @@
 
 #include "6pack.h"
 #ifdef ATTACH
-int iDescriptor = -1;
+intptr_t iDescriptor = -1;
 #endif
 
 /************************************************************************/
@@ -1431,6 +1431,7 @@ void SixpackLog(const char *format, ...)
   FILE *fp;
   va_list arg_ptr;
   struct timeval tv;
+  time_t timestamp;
   static char str[30];
   char *ptr;
 
@@ -1439,7 +1440,8 @@ void SixpackLog(const char *format, ...)
   if (fp != NULL)
   {
     gettimeofday(&tv, NULL);
-    ptr = ctime(&tv.tv_sec);
+    timestamp = (time_t)tv.tv_sec;
+    ptr = ctime(&timestamp);
     strcpy(str, &ptr[11]);
     fprintf(fp, "%s:", str);
 

@@ -401,7 +401,7 @@ BOOLEAN TcpDCD(int l2port)           /* DCD-Status bei TCPIP ist immer FALSE. */
 }
 
 /* Defaultwerte setzen. */
-void SetDefaultWorthTCP(unsigned  sock,               /* Neuer Socket.        */
+void SetDefaultWorthTCP(TNN_SOCKET sock,              /* Neuer Socket.        */
                         char     *ip,                 /* IP-Adresse.          */
                         int       l2port,             /* L2-Port.             */
                         UWORD     Interface,          /* TCP-Interface.       */
@@ -1587,7 +1587,7 @@ TCPIP *FdReadTCP(Fd_set Rmask)
 }
 
 /* Anhand des Sockets den User aus der Liste holen. */
-TCPIP *FdReadSockTCP(int Sock, UWORD Interface, UWORD Mode)
+TCPIP *FdReadSockTCP(TNN_SOCKET Sock, UWORD Interface, UWORD Mode)
 {
   int i, j = FALSE;
   LHEAD  *h_llp;
@@ -1667,9 +1667,9 @@ void TcpipRX(void)
     {
       /* ggf. Logbuch fuehren. */
       ifpp = SetInterface(SRx->Interface);
-      T_LOGL1(TRUE, "(TcpipRX):\nKein User gefunden (Sock:%d, Interface:%d, Mode:%d\n"
+      T_LOGL1(TRUE, "(TcpipRX):\nKein User gefunden (Sock:%lld, Interface:%d, Mode:%d\n"
                     "RX-Segment entsorgen.\n"
-                    , SRx->Sock
+                    , (long long)SRx->Sock
                     , SRx->Interface
                     , SRx->Mode);
 
@@ -1732,9 +1732,9 @@ void TcpipTX(void)
     {
       /* ggf. Logbuch fuehren. */
       ifpp = SetInterface(STx->Interface);
-      T_LOGL1(TRUE, "(TcpipRX):\nKein User gefunden (Sock:%d, Interface:%d, Mode:%d\n"
+      T_LOGL1(TRUE, "(TcpipRX):\nKein User gefunden (Sock:%lld, Interface:%d, Mode:%d\n"
                     "TX-Segment entsorgen.\n"
-                    , STx->Sock
+                    , (long long)STx->Sock
                     , STx->Interface
                     , STx->Mode);
 

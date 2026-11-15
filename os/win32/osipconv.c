@@ -16,7 +16,7 @@ static struct sockaddr_in peeraddr_in;
 int IPConvConnectOS(char *call, char *upcall, BOOLEAN flag)
 {
   SENDTX         *STx = NULL;
-  int             fd = EOF;
+  TNN_SOCKET      fd = EOF;
   int             ch = FALSE;
   register int    i  = EOF;
   struct hostent *h;

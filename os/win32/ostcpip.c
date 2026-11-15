@@ -112,10 +112,10 @@ void L1ExitOS(UWORD Interface)
 }
 
                                         /* Einen Filedescriptor anlegen.      */
-int SetupOS(T_INTERFACE   *ifpp,       /* Zeiger auf das aktuelle Interface. */
+TNN_SOCKET SetupOS(T_INTERFACE *ifpp,  /* Zeiger auf das aktuelle Interface. */
              unsigned short tcp_port)   /* Neuer TCP-Port.                    */
 {
-  int tmp_fd = EOF;                     /* Temporaerer Filedescriptor         */
+  TNN_SOCKET tmp_fd = EOF;              /* Temporaerer Filedescriptor         */
 #ifdef DEBUG_MODUS
   lastfunc = "ostcpip(SetupOS)";
 #endif /* DEBUG_MODUS */
@@ -220,15 +220,15 @@ int ReadSockOS(void)                     /* Empfangene TCPIP Packete.         */
     if (!tcppoi->mode)                                           /* OS-Stack. */
     {
       FD_ZERO(&fdsI);                          /* Inhalt loeschen.            */
-      FD_SET((unsigned)tcppoi->sock, &fdsI);   /* Socket setzen.              */
+      FD_SET((SOCKET)tcppoi->sock, &fdsI);     /* Socket setzen.              */
 
       timevalue.tv_usec = 0;
       timevalue.tv_sec  = 0;
                                                /* Pruefe auf aktivitaet.      */
-      ret = select(tcppoi->sock + 1, &fdsI, NULL , NULL ,&timevalue);
+      ret = select(0, &fdsI, NULL , NULL ,&timevalue);
 
       if (ret <= 0)
-        return((int)NULL);               /* Keine aktivitaet auf den Socket.  */
+        return(0);                       /* Keine aktivitaet auf den Socket.  */
       else
         /* Zeichen vom Socket empfangen. */
         tcppoi->RecvLen = recv (tcppoi->sock, tcppoi->rxbuf, RXLEN,0);
@@ -244,7 +244,7 @@ int ReadSockOS(void)                     /* Empfangene TCPIP Packete.         */
                   , tcppoi->ip);
 
         tcppoi->disflg |= 0x80;          /* Segment auf DISC stellen.         */
-        return((int)NULL);
+        return(0);
       }
 
       if (  (ret)
@@ -256,7 +256,7 @@ int ReadSockOS(void)                     /* Empfangene TCPIP Packete.         */
                   , tcppoi->ip);
 
         tcppoi->disflg |= 0x80;          /* Segment auf DISC stellen.         */
-        return((int)NULL);
+        return(0);
       }
     }
 
@@ -464,7 +464,7 @@ void ServOS(void)                     /* Empfangene Zeichen in Frames packen. */
 
 /* Neue User hinzufuegen, vorrausgesetzt es sind noch freie Sockets vorhanden.*/
 int AddUserOS(T_INTERFACE *ifpoi,                     /* TCP-Interface.       */
-               unsigned     NewSocket,                /* Neuer Socket.        */
+               TNN_SOCKET   NewSocket,                /* Neuer Socket.        */
                char        *ip)                       /* IP-Adresse.          */
 {
 #ifdef DEBUG_MODUS
@@ -496,7 +496,6 @@ void ListenTCP_OS(void)
   fd_set         rmask;
   struct timeval timevalue;
   UWORD          Interface = KISS_TCPIP;
-  int            max_fd;
   register int   i;
   int            count,
                  j = 0;
@@ -504,7 +503,6 @@ void ListenTCP_OS(void)
   lastfunc = "ostcpip(ListenTCP_OS)";
 #endif /* DEBUG_MODUS */
 
-  max_fd = 0;
   FD_ZERO(&rmask);
 
   /* Interface-Socket's setzen. */
@@ -518,10 +516,7 @@ void ListenTCP_OS(void)
       continue;
 
     /* Interface-Socket setzen. */
-    FD_SET((unsigned)ifpp->OsSock, &rmask);
-
-    if (ifpp->OsSock > max_fd - 1)
-      max_fd = ifpp->OsSock + 1;
+    FD_SET((SOCKET)ifpp->OsSock, &rmask);
   }
 
                                                      /* User-Socket's setzen. */
@@ -535,10 +530,7 @@ void ListenTCP_OS(void)
       if (tcppoi->sock < 1)                           /* Kein Socket gesetzt, */
         continue;                                   /* zum naechsten Segment. */
 
-      FD_SET((unsigned)tcppoi->sock, &rmask);                /* Socket setzen */
-
-      if (tcppoi->sock > max_fd - 1)
-        max_fd = tcppoi->sock + 1;
+      FD_SET((SOCKET)tcppoi->sock, &rmask);                  /* Socket setzen */
     }
 
     if (  ((tcppoi->activ)          /* Sind alle aktiven Sockets durchlaufen, */
@@ -550,7 +542,7 @@ void ListenTCP_OS(void)
   timevalue.tv_usec = 0;
   timevalue.tv_sec  = 0;
 
-  count = select(max_fd, &rmask, NULL, NULL, &timevalue);
+  count = select(0, &rmask, NULL, NULL, &timevalue);
 
   if (count < 1)
     return;
@@ -569,7 +561,7 @@ void ListenTCP_OS(void)
     if (FD_ISSET(ifpp->OsSock, &rmask))         /* Interface-Socketvergleich. */
     {
       char      ip[IPADDR + 1];
-      int       NewSock;
+      TNN_SOCKET NewSock;
       socklen_t addrlen;
       ULONG     peerip = 0;
       char     *p = (char *)&peerip;
@@ -595,9 +587,9 @@ void ListenTCP_OS(void)
         ifpp = SetInterface(tcppoi->Interface);
         T_LOGL2(TRUE, "(ListenTCP_OS):\n"
                       "Verbindung zur IP-Adresse %s angenommen.\n"
-                      "Neu erzeugter Socket ist (%d).\n"
+                      "Neu erzeugter Socket ist (%lld).\n"
                       , ip
-                      , NewSock);
+                      , (long long)NewSock);
         return;
       }
     }
@@ -609,9 +601,9 @@ void ListenTCP_OS(void)
     /* ggf. Logbuch fuehren. */
     ifpp = SetInterface(tcppoi->Interface);
 
-    T_LOGL3(TRUE, "(ListenTCP_OS):%s\nAktuellen Socket (%d) in der Liste gefunden.\n"
+    T_LOGL3(TRUE, "(ListenTCP_OS):%s\nAktuellen Socket (%lld) in der Liste gefunden.\n"
                 , tcppoi->ip
-                , tcppoi->sock);
+                , (long long)tcppoi->sock);
 
     /* TCPIP Packete empfangen/bearbeiten/senden */
     ServOS();
@@ -637,9 +629,9 @@ int PutflushSockOS(void)
       struct timeval Tv;
 
       FD_ZERO(&wfdsI);                                 /* Loesche inhalt. */
-      FD_SET((unsigned)tcppoi->sock, &wfdsI);           /* Socket setzen. */
+      FD_SET((SOCKET)tcppoi->sock, &wfdsI);             /* Socket setzen. */
 
-      if (select(tcppoi->sock + 1, NULL, &wfdsI , NULL ,&Tv))/* Sender frei.*/
+      if (select(0, NULL, &wfdsI , NULL ,&Tv))          /* Sender frei. */
       {
         if (tcppoi->txstatus == TCP_TX_BUSY)        /* Sender ist auf Busy. */
           tcppoi->txstatus = TCP_TX_FREE;       /* Sender auf frei stellen. */

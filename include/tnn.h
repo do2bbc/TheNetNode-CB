@@ -67,6 +67,9 @@
 
 #ifdef __WIN32__
 #include "winclude.h"
+typedef intptr_t TNN_SOCKET;
+#else
+typedef int TNN_SOCKET;
 #endif /* WIN32 */
 
 #ifdef PC

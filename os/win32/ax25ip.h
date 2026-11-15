@@ -99,8 +99,8 @@ unsigned short my_udp = 0;
 int            route_tbl_top = 0;
 int            loglevel = 0;
 
-int            fd_udp = -1;             /* Filedescriptor fuer UDP */
-int            fd_ip = -1;              /* Filedescriptor fuer IP  */
+TNN_SOCKET     fd_udp = -1;             /* Socket fuer UDP */
+TNN_SOCKET     fd_ip = -1;              /* Socket fuer IP  */
 
 /* TEST DG9OBU */
 static BOOLEAN new_parser = FALSE;      /* Standardmaessig alte Syntax */
@@ -125,8 +125,8 @@ struct route_table_entry route_tbl[TABLE_SIZE];
 struct route_table_entry default_route;
 
 /* Funktionsprototypen */
-int                setup_ip(void);
-int                setup_udp(unsigned short);
+TNN_SOCKET         setup_ip(void);
+TNN_SOCKET         setup_udp(unsigned short);
 void               show_rt_entry(struct route_table_entry, MBHEAD*);
 void               ccpaxipr(void);
 void               ax25ip_send(void);

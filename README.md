@@ -295,14 +295,36 @@ Keine SDK-Header veraendern und das historische `hardpatch`-Target nicht
 ausfuehren. Hardwarebeispiele und Diagnosegrenzen stehen in
 [der Paket-Anleitung](os/win32/portable/README.txt).
 
-Der GitHub-Workflow `Windows portable CB test package` baut bei Pull Requests,
+Der GitHub-Workflow `Windows portable CB packages` baut bei Pull Requests,
 `v*`-Tags, manueller Ausloesung und veroeffentlichten Releases. ZIP und
 Pruefsumme stehen als Workflow-Artefakt bereit; bei einem veroeffentlichten
-Release werden sie automatisch angehaengt. Der Workflow erstellt selbst
-keinen Release. Bei nachtraeglich angehaengten Builds aus einem neueren
-Commit muss der abweichende Quellstand in den Release-Notizen genannt werden;
-die automatisch angebotenen Tag-Quellarchive sind dann nicht der passende
-Windows-Quellcode. Dafuer ist `SOURCE.zip` im Paket massgeblich.
+Release werden Win32- und experimentelles Win64-Paket automatisch angehaengt.
+Der Workflow erstellt selbst keinen Release. Bei nachtraeglich angehaengten
+Builds aus einem neueren Commit muss der abweichende Quellstand in den
+Release-Notizen genannt werden; die automatisch angebotenen Tag-Quellarchive
+sind dann nicht der passende Windows-Quellcode. Dafuer ist `SOURCE.zip` im
+Paket massgeblich.
+
+### Experimenteller Windows-x64-Build
+
+Ein separates Win64-Ziel verwendet MinGW-w64 und setzt die Windows-API und
+Subsystem-Version 6.0 (Vista). Das allein garantiert keine Vista- oder
+Windows-7-Kompatibilitaet:
+
+```bash
+make -f tnn64.mak all
+sh tests/win64-build.sh
+```
+
+Die Abhaengigkeiten haengen vom Compiler ab. Der ABI-Test verlangt MSVCRT und
+verwirft Builds mit UCRT-Abhaengigkeiten; insbesondere der Arch-Linux-MinGW
+kann UCRT-DLLs einbinden, die auf Windows 7 nicht selbstverstaendlich vorhanden
+sind. Die x64-Objekte muessen in einer separaten Quellkopie gebaut werden; sie
+duerfen nicht mit den Win32-Objekten gemischt werden. Der Workflow prueft
+Architektur, ABI, Subsystem-Version und DLL-Abhaengigkeiten und packt TNN,
+Hilfsprogramme, portable Konfiguration, Dokumentation, Lizenz und passenden
+Quellcode in ein experimentelles Win64-ZIP. Start und AXIP/UDP-Verbindung
+wurden auf Windows 7 x64 getestet; der externe Modem-/TNC-Test steht noch aus.
 
 ## Debian-Pakete: amd64, arm64 und armhf
 

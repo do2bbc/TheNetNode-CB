@@ -1,4 +1,4 @@
-name: Windows portable CB test package
+name: Windows portable CB packages
 
 on:
   workflow_dispatch:
@@ -12,6 +12,22 @@ permissions:
   contents: read
 
 jobs:
+  x64-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install x64 MinGW build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-mingw-w64-x86-64 gcc-mingw-w64-x86-64 make binutils-mingw-w64-x86-64 perl zip unzip
+      - name: Build and verify Win64 package
+        run: sh tests/package-win64.sh "$RUNNER_TEMP/windows-package"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: TNN-CB-Win64-experimental
+          path: ${{ runner.temp }}/windows-package/*
+          if-no-files-found: error
   package:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -31,7 +47,7 @@ jobs:
           if-no-files-found: error
   release:
     if: github.event_name == 'release'
-    needs: package
+    needs: [package, x64-build]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -39,6 +55,10 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           name: TNN-CB-Win32-test
+          path: windows-package
+      - uses: actions/download-artifact@v7
+        with:
+          name: TNN-CB-Win64-experimental
           path: windows-package
       - name: Attach ZIP and checksum to published release
         env:

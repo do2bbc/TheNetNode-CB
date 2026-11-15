@@ -5,7 +5,7 @@ DIR *opendir(const char *dir)
 {
   DIR *dp;
   char *filespec;
-  long handle;
+  intptr_t handle;
   int index;
 
   filespec = malloc(strlen(dir) + 2 + 1);

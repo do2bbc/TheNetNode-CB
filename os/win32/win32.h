@@ -178,7 +178,7 @@ typedef struct
   char    device[MAXPATH];      /* Device fuer diesen Port              */
   char    tnn_lockfile[MAXPATH];/* Lockfile fuer Device dieses Ports    */
   int     lock;                 /* Filenummer fuer Lock-File            */
-  int     kisslink;             /* Filenummer fuer Device               */
+  intptr_t kisslink;            /* Handle fuer Device                   */
   UWORD   speed;                /* Baudrate des Device                  */
   WORD    speedflag;            /* Flag fuer Baudraten > 38400          */
   WORD    kisstype;             /* 0 = Kiss, 1 = SMACK, 2 = RMNC-KISS,  */
@@ -259,7 +259,7 @@ typedef unsigned int socklen_t;
 
  static u_long  noblockingmode = FIONBIO;
  /* Variable fuer Winsock Initialisieren. */
- extern int     consolefd;
+ extern SOCKET  consolefd;
 
 /* ------------------- Funktionen bei Win32-Version --------------------*/
 
@@ -289,9 +289,9 @@ void     ccpsetshell(void);
 BOOLEAN     good_file_name(const char *);
 int         getftime(int, struct ftime *);
 int         exit_all(void);
-int         open_win (char *, int);
-int         w_read (int, void *, int);
-int         w_write (int, void *, int);
+intptr_t    open_win (char *, int);
+int         w_read (intptr_t, void *, int);
+int         w_write (intptr_t, void *, int);
 int         strcasecmp(const char *, const char *);
 void        console_titel(void);
 void        gettimeofdaywindows(struct timeval *, struct timezone *);

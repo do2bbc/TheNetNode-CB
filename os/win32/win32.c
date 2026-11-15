@@ -63,7 +63,7 @@ static  struct  timeval tv_old;
 static  int     wdpid[2];
 static  int     watch_dog[2];
 #endif
-int        consolefd = EOF;
+SOCKET     consolefd = INVALID_SOCKET;
 
 #ifndef NO_WATCHDOG
 static void     watchdog_init(void);
@@ -82,7 +82,7 @@ UWORD   maxrounds = 1;          /* 1 = 100 Runden (default, wenn kein   */
                                 /* "rounds"-Eintrag in tnn.ini          */
 
 /* COM-Schnittststellen oeffnen. */
-int open_win (char *name, int baud)
+intptr_t open_win (char *name, int baud)
 { 
   HANDLE h;
   COMMTIMEOUTS ct;    
@@ -91,7 +91,7 @@ int open_win (char *name, int baud)
   h = CreateFile (name, GENERIC_READ|GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
                   FILE_ATTRIBUTE_NORMAL,// | FILE_FLAG_OVERLAPPED,
                   NULL);
-  if ((int)h == EOF)
+  if (h == INVALID_HANDLE_VALUE)
     return EOF;
 
   if (SetCommMask (h, 0) == FALSE)
@@ -161,10 +161,10 @@ int open_win (char *name, int baud)
     Break();
   }
 
-  return((int)h);
+  return((intptr_t)h);
 }
 
-int w_read (int fd, void *data, int maxlen)
+int w_read (intptr_t fd, void *data, int maxlen)
 {
   DWORD ret = 0;
   static OVERLAPPED ovl = { 0, 0, 0, 0, 0 };
@@ -173,7 +173,7 @@ int w_read (int fd, void *data, int maxlen)
   return ret;
 }
 
-int w_write (int fd, void *data, int maxlen)
+int w_write (intptr_t fd, void *data, int maxlen)
 {
   DWORD ret = 0;
   static OVERLAPPED ovl = { 0, 0, 0, 0, 0 };
@@ -399,7 +399,6 @@ update_timer(void)
   fd_set             rmask;
   fd_set             wmask;
   struct timeval     timevalue;
-  int                max_fd = 0;
   int                count;
   register int       i;
   int                len;
@@ -423,8 +422,7 @@ update_timer(void)
   FD_ZERO(&rmask);
   FD_ZERO(&wmask);
 
-  FD_SET((unsigned)consolefd, &rmask);        /* Eingabe Console      */
-  max_fd = 1;
+  FD_SET(consolefd, &rmask);                  /* Eingabe Console      */
 
   if (kiss_active)
   {
@@ -457,9 +455,7 @@ update_timer(void)
 
       if (l1port[i].port_active)
       {
-        FD_SET((unsigned)l1port[i].kisslink, &wmask);
-        if (l1port[i].kisslink > max_fd -1)
-          max_fd = l1port[i].kisslink + 1;
+        FD_SET((SOCKET)l1port[i].kisslink, &wmask);
       }
     }
   }
@@ -488,7 +484,7 @@ update_timer(void)
   else
     roundcounter = 0;                  /* Durchlaufzaehler ruecksetzen  */
 
-  count = select(max_fd, &rmask, NULL, NULL, &timevalue);
+  count = select(0, &rmask, NULL, NULL, &timevalue);
 
   if (count == -1)
     return;
@@ -686,7 +682,7 @@ init_console(void)
     return;
   }
 
-  if ((consolefd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+  if ((consolefd = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
     return;
 
   consfile = stdout;

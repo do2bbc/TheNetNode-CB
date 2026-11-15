@@ -40,7 +40,7 @@ typedef struct
   UWORD   Interface;               /* Nummer vom Interface.                   */
   BOOLEAN actively;                /* Interface aktiv/deaktiv.                */
   UWORD   tcpport;                 /* TCP-Port.                               */
-  int     OsSock;                  /* OS-Socket.                              */
+  TNN_SOCKET OsSock;               /* OS-Socket.                              */
   int     ISock;                   /* Interner Socket.                        */
   int     l2port;                  /* L2-Port vom Interface.                  */
   int     log;                     /* Loglevel.                               */
@@ -57,7 +57,7 @@ typedef struct ReadRX              /* Empfangsbuffer.                         */
   UBYTE          owner;            /* Muss an 9. Bytestelle stehen            */
 #endif
   MBHEAD        *Data;             /* RX-Buffer.                              */
-  int            Sock;
+  TNN_SOCKET     Sock;
   UWORD          Interface;        /* TCPIP-Interface.                        */
   UWORD          Mode;             /* Stack-Mode.                             */
 } READRX;
@@ -70,7 +70,7 @@ typedef struct SendTX              /* Sendebuffer.                            */
   UBYTE          owner;            /* Muss an 9. Bytestelle stehen            */
 #endif
   MBHEAD        *Data;             /* TX-Buffer.                              */
-  int            Sock;
+  TNN_SOCKET     Sock;
   UWORD          Interface;        /* TCPIP-Interface.                        */
   UWORD          Mode;             /* Stack-Mode.                             */
 } SENDTX;
@@ -87,7 +87,7 @@ typedef struct TCPIP               /* TCPIP-User/Link                         */
   char          rxbuf[RXLEN + 1];  /* RX-Buffer recv                          */
   char          txbuf[TXLEN + 1];  /* TX-Buffer send                          */
   char          cmd[TXLEN + 1];    /* Befehlszeile vom User.                  */
-  int           sock;              /* Socket.                                 */
+  TNN_SOCKET    sock;              /* Socket.                                 */
   BOOLEAN       mode;              /* Socket-Mode. (OS-Socket / Inter. Socket)*/
   char          Upcall[L2IDLEN];   /* Updown Login Rufzeichen                 */
   char          Downcall[L2IDLEN]; /* Down   Login Rufzeichen                 */
@@ -169,7 +169,7 @@ extern int     AddUserTCP(T_INTERFACE *,       /* Neue User hinzufuegen,      */
                           unsigned,            /* vorrausgesetzt es sind noch */
                           char *);             /* freie Sockets vorhanden.    */
 
-extern void    SetDefaultWorthTCP(unsigned,           /* Defaultwerte setzen. */
+extern void    SetDefaultWorthTCP(TNN_SOCKET,         /* Defaultwerte setzen. */
                                   char *,
                                   int ,
                                   UWORD ,

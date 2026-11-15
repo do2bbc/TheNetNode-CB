@@ -217,7 +217,11 @@ send_l3srtt_frame(PEER *pp)
     putlong(tic10, TRUE, mbp);            /* 10ms Ticks seit Softstart  */
     putlong((ULONG)pp->quality, TRUE, mbp);  /* aktueller L3-SRTT Wert  */
     putlong((ULONG)pp->my_quality, TRUE, mbp);  /* letzter L3-RTT Wert  */
+#ifdef _WIN64
+    putlong((ULONG)(pp - netp->peertab) + 1, TRUE, mbp);
+#else
     putlong((ULONG)pp, TRUE, mbp);        /* Pointer als ID             */
+#endif
     putchr(' ', mbp);
     pu6chr(alias, mbp);
     putstr(" LEVEL3_V2.1 ", mbp);         /* L3-Version                 */
@@ -379,7 +383,11 @@ rx_l3rtt_frame(PEER *rxpp, MBHEAD *mbp, char huge *savmbbp, WORD savmbgc)
   ULONG       prev_tic10;       /* Zeitpunkt der RTT Messung in 10ms    */
   ULONG       prev_l3srtt;      /* letzter SRTT (smoothed RTT)          */
   ULONG       prev_l3rtt;       /* letzter gemessener RTT-Wert          */
+#ifdef _WIN64
+  ULONG       rtt_peer_id;
+#else
   PEER       *rtt_pp;           /* Pointer auf Nachbarliste             */
+#endif
   char        buf2[8];
   ULONG       rtt;
   INDEX       index;
@@ -409,7 +417,11 @@ rx_l3rtt_frame(PEER *rxpp, MBHEAD *mbp, char huge *savmbbp, WORD savmbgc)
              &prev_tic10,
              &prev_l3srtt,
              &prev_l3rtt,
+#ifdef _WIN64
+             &rtt_peer_id,
+#else
              (unsigned long *)&rtt_pp,
+#endif
              rx_alias,
              ver,
              buf2);
@@ -429,7 +441,11 @@ rx_l3rtt_frame(PEER *rxpp, MBHEAD *mbp, char huge *savmbbp, WORD savmbgc)
 /************************************************************************/
       if (cmpid(orgnod, myid))               /* selbst Absender         */
       {
+#ifdef _WIN64
+        if (rtt_peer_id == (ULONG)(rxpp - netp->peertab) + 1)
+#else
         if ((rtt_pp == rxpp))                /* passender Nachbar       */
+#endif
           if (   tic10 > prev_tic10          /* Uhr nicht uebergelaufen */
               && rxpp->rttstart == prev_tic10   /* richtige Messung     */
               && ((tic10 - prev_tic10) < 10000))/* nicht zu lang!       */

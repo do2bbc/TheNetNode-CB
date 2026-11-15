@@ -430,7 +430,9 @@ void ccpdir(void)
   MBHEAD *mbp;
   struct ffblk fblock;
   int lastentry;
+#ifndef __WIN32__
   struct tm *ftime;
+#endif
   int einfach, cnt;
 
   einfach = FALSE;
@@ -465,11 +467,20 @@ void ccpdir(void)
           cnt = 0;
         }
       } else {
+#ifdef __WIN32__
+        putprintf(mbp,"%12s %8ld Bytes  %2.2u.%02u.%02u %2.2u:%02u:%02u\r",
+            fblock.ff_name, fblock.ff_fsize,
+            fblock.ff_fdate & 31, (fblock.ff_fdate >> 5) & 15,
+            ((fblock.ff_fdate >> 9) + 80) % 100,
+            (fblock.ff_ftime >> 11) & 31, (fblock.ff_ftime >> 5) & 63,
+            (fblock.ff_ftime & 31) * 2);
+#else
         ftime = localtime((const long *)&fblock.ff_ftime);
         putprintf(mbp,"%12s %8ld Bytes  %2.2d.%02d.%02d %2.2d:%02d:%02d\r",
             fblock.ff_name, fblock.ff_fsize,
             ftime->tm_mday, (ftime->tm_mon)+1, ftime->tm_year%100,
             ftime->tm_hour, ftime->tm_min, ftime->tm_sec);
+#endif
       }
       lastentry = xfindnext(&fblock);
     }

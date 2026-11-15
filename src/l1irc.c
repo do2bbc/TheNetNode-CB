@@ -110,7 +110,7 @@ void ccpirc(void)
         if ((tmp_fd = SetupTCP(ifpp->name, (unsigned short)new_tcp_port)) != EOF)
         {
 #ifdef OS_STACK
-          int tmp_fd_OS;
+          TNN_SOCKET tmp_fd_OS;
 
           if ((tmp_fd_OS = SetupOS(ifpp, (unsigned short)new_tcp_port)) != EOF)
           {

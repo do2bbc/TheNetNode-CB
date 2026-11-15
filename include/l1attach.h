@@ -19,7 +19,11 @@ extern BOOLEAN van_test(int);
 #endif
 
 #ifdef SIXPACK
+#ifdef __WIN32__
+extern intptr_t iDescriptor;
+#else
 extern int iDescriptor;
+#endif
 #endif /* SIXPACK */
 
 void           ccpattach(void);
